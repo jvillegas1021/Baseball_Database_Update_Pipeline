@@ -201,6 +201,23 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Local environment variables
+.env
+.env.local
+
+# Raw data (optional but recommended)
+data_raw/
+raw_data/
+
+# Logs
+logs/
+*.log
+
+# Credentials (just in case)
+*.key
+*.pem
+
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
