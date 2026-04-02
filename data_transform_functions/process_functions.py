@@ -1,0 +1,1082 @@
+import pandas as pd
+from datetime import datetime
+import pytz
+from functools import reduce
+
+from data_extract_functions.extract_player_data import batter_splits
+
+from data_transform_functions.utility_functions import filter_relievers, safe_div
+
+
+def process_pitcher_df(pitcher_df: pd.DataFrame) -> pd.DataFrame:
+    pitcher_df['update date'] = datetime.now(pytz.timezone("America/New_York"))
+    return(pitcher_df)
+
+def process_batter_df(batter_df: pd.DataFrame) -> pd.DataFrame:
+    batter_df['update date'] = datetime.now(pytz.timezone("America/New_York"))
+    return(batter_df)
+
+
+
+def process_team_pitching_df(game_id: int, game_official_date, team_name: str, team_id: int, team_pitchers_player_ids: list[int],
+                            all_pitching_stats_df: pd.DataFrame) -> pd.DataFrame:
+
+    if all_pitching_stats_df.empty:
+        return None
+
+
+    relievers_df = filter_relievers(all_pitching_stats_df)
+
+
+    if relievers_df.empty:
+        return None
+
+
+    if 'xMLBAMID' not in relievers_df.columns or 'xMLBAMID' not in relievers_df.columns:
+        return None
+
+    roster_pitching_df = relievers_df[
+        relievers_df['xMLBAMID'].isin(team_pitchers_player_ids)]
+    
+
+    if roster_pitching_df.empty or roster_pitching_df.empty:
+        return None
+
+        
+    
+    # start counting stat process
+    # start counting stat process
+
+    g = roster_pitching_df  # shorthand
+    
+    team = {}
+    
+    # --- Totals ---
+    team["strikeouts"] = g["strikeouts"].sum()
+    team["walks"] = g["walks"].sum()
+    team["hits"] = g["hits"].sum()
+    team["home_runs"] = g["home_runs"].sum()
+    team["ground_balls"] = g["ground_balls"].sum()
+    team["fly_balls"] = g["fly_balls"].sum()
+    team["line_drives"] = g["line_drives"].sum()
+    team["batted_balls"] = g["batted_balls"].sum()
+    team["whiffs"] = g["whiffs"].sum()
+    team["swings"] = g["swings"].sum()
+    team["pitches"] = g["pitches"].sum()
+    team["pitches_in_zone"] = g["pitches_in_zone"].sum()
+    team["swings_in_zone"] = g["swings_in_zone"].sum()
+    team["swings_out_zone"] = g["swings_out_zone"].sum()
+    team["contacted_balls"] = g["contacted_balls"].sum()
+    team["contacted_balls_in_zone"] = g["contacted_balls_in_zone"].sum()
+    team["contacted_balls_out_zone"] = g["contacted_balls_out_zone"].sum()
+    team["first_pitch_strikes"] = g["first_pitch_strikes"].sum()
+    team["first_pitches"] = g["first_pitches"].sum()
+    team["launch_speed_sum"] = g["launch_speed_sum"].sum()
+    team["launch_angle_sum"] = g["launch_angle_sum"].sum()
+    team["xWOBA_allowed"] = g["xWOBA_allowed"].sum()
+    team["outs"] = g["outs"].sum()
+    team["hit_by_pitch"] = g["hit_by_pitch"].sum()
+    
+    # --- Derived totals ---
+    team["IP"] = team["outs"] / 3
+    team["batters_faced"] = (
+        team["strikeouts"] +
+        team["walks"] +
+        team["hit_by_pitch"] +
+        team["batted_balls"]
+    )
+    
+    # --- Rate stats ---
+    team["K%"] = safe_div(team["strikeouts"], team["batters_faced"])
+    team["BB%"] = safe_div(team["walks"] , team["batters_faced"])
+    team["K-BB%"] = team["K%"] - team["BB%"]
+    team["K/BB"] = safe_div(team["strikeouts"] , team["walks"])
+    team["SwStr%"] = safe_div(team["whiffs"] , team["pitches"])
+    team["Contact%"] = safe_div(team["contacted_balls"] , team["swings"])
+    team["Z-Contact%"] = safe_div(team["contacted_balls_in_zone"] , team["swings_in_zone"])
+    team["O-Contact%"] = safe_div(team["contacted_balls_out_zone"] , team["swings_out_zone"])
+    team["GB%"] = safe_div(team["ground_balls"] , team["batted_balls"])
+    team["FB%"] = safe_div(team["fly_balls"] , team["batted_balls"])
+    team["LD%"] = safe_div(team["line_drives"] , team["batted_balls"])
+    team["HR/FB"] = safe_div(team["home_runs"] , team["fly_balls"])
+    team["EV"] = safe_div(team["launch_speed_sum"] , team["batted_balls"])
+    team["LA"] = safe_div(team["launch_angle_sum"] , team["batted_balls"])
+    team["Hard%"] = safe_div(g["hard_hit_balls"].sum() , team["batted_balls"])
+    team["Barrel%"] = safe_div(g["barrel_balls"].sum() , team["batted_balls"])
+
+    # --- Missing plate-discipline stats (add these) ---
+    team["Zone%"] = safe_div(team["pitches_in_zone"] , team["pitches"])
+    
+    team["Z-Swing%"] = safe_div(team["swings_in_zone"] , team["pitches_in_zone"])
+    
+    team["O-Swing%"] = safe_div(team["swings_out_zone"] , (team["pitches"] - team["pitches_in_zone"]))
+    
+    team["C+SwStr%"] = safe_div((team["first_pitch_strikes"] + team["whiffs"]) , team["pitches"])
+    
+    team["F-Strike%"] = safe_div(team["first_pitch_strikes"] , team["first_pitches"])
+
+    
+    # --- Run prevention ---
+    team["WHIP"] = safe_div((team["walks"] + team["hits"]) , team["IP"])
+    team["BABIP"] = safe_div((team["hits"] - team["home_runs"]) , (team["batted_balls"] - team["home_runs"]))
+    
+    # xERA + FIP (same constants you use in pitcher benchmark)
+    
+    # constants
+
+    league_xwoba = 0.3162979120429958
+        
+    league_era = 4.15
+    
+    fip_constant = 3.1495185210234546
+    
+    team_xwoba = team["xWOBA_allowed"] / team["batted_balls"]
+    team["xERA"] = league_era + (team_xwoba - league_xwoba) * 1.15 * 9
+    
+    team["FIP"] = (
+        (13 * team["home_runs"] +
+         3 * (team["walks"] + team["hit_by_pitch"]) -
+         2 * team["strikeouts"]) / team["IP"]
+    ) + fip_constant
+
+    identifiers = {
+    "gamePk": game_id,
+    "officialDate": game_official_date,
+    "team_name": team_name,
+    "team_id": team_id
+    }
+    
+    team_df = pd.DataFrame([{**identifiers, **team}])
+
+    team_df['update date'] = datetime.now(pytz.timezone("America/New_York"))
+
+
+    return team_df
+
+
+def process_team_batting_df(game_id: int, game_official_date, team_name: str, team_id: int, team_batters_player_ids: list[int],
+                            all_batter_stats: pd.DataFrame) -> pd.DataFrame:
+    wBB = 0.691
+    wHBP = 0.722
+    w1B = 0.882
+    w2B = 1.252
+    w3B = 1.584
+    wHR = 2.037
+    
+    league_woba = 0.313
+    wOBAScale = 1.232
+    R_PA_lg = 0.118
+
+    roster_batting_df = all_batter_stats[all_batter_stats['xMLBAMID'].isin(team_batters_player_ids)]
+    
+    if roster_batting_df.empty or roster_batting_df.empty:
+        return None
+
+    # Counting stats projected to 162 games (talent-ish, per-game played)
+    count_stats = [
+    'SO', 'GDP', '1B', '2B', '3B', 'HR', 'BB', 'SF', 'HBP',
+    'H', 'GB', 'FB', 'LD', 'AB', 'PA'
+    ]
+    
+    team_counting_stats_results = {}
+    
+    # Player-level games played
+    g = roster_batting_df['games_played']
+    
+    for stat in count_stats:
+        stat_values = roster_batting_df[stat]
+    
+        # Per-game rate per player
+        stat_per_g = stat_values / g
+    
+        # Project each player to 162 games
+        stat_162_player = stat_per_g * 162
+
+        # Team projection = sum of player projections
+        team_counting_stats_results[stat] = stat_162_player.sum()
+
+
+    h     = team_counting_stats_results['H']
+    ab    = team_counting_stats_results['AB']
+    bb    = team_counting_stats_results['BB']
+    sf    = team_counting_stats_results['SF']
+    hbp   = team_counting_stats_results['HBP']
+    gb    = team_counting_stats_results['GB']
+    fb    = team_counting_stats_results['FB']
+    ld    = team_counting_stats_results['LD']
+    pa    = team_counting_stats_results['PA']
+    one_b = team_counting_stats_results['1B']
+    two_b = team_counting_stats_results['2B']
+    three_b = team_counting_stats_results['3B']
+    hr    = team_counting_stats_results['HR']
+    so    = team_counting_stats_results['SO']
+    gdp   = team_counting_stats_results['GDP']
+
+
+    k_perc = so / pa if pa > 0 else 0
+    bb_perc = bb / pa if pa > 0 else 0
+
+    gb_fb_ld = gb + fb + ld
+    gb_perc = gb / gb_fb_ld if gb_fb_ld > 0 else 0
+    fb_perc = fb / gb_fb_ld if gb_fb_ld > 0 else 0
+    ld_perc = ld / gb_fb_ld if gb_fb_ld > 0 else 0
+
+    avg = h / ab if ab > 0 else 0
+    tb = (one_b + (2 * two_b) + (3 * three_b) + (4 * hr))
+    slg = tb / ab if ab > 0 else 0
+    iso = slg - avg
+    babip = (h - hr) / (ab - so - hr + sf) if (ab - so - hr + sf) > 0 else 0
+    obp = (h + bb + hbp) / (ab + bb + hbp + sf) if (ab + bb + hbp + sf) > 0 else 0
+    bb_k = bb / so if so > 0 else 0
+    hr_fb = hr / fb if fb > 0 else 0
+
+    team_hard      = safe_div(roster_batting_df["hard_hit_balls"].sum(),
+                          roster_batting_df["batted_balls"].sum())
+
+    team_z_swing   = safe_div(roster_batting_df["swings_in_zone"].sum(),
+                              roster_batting_df["pitches_in_zone"].sum())
+    
+    team_z_contact = safe_div(roster_batting_df["contacted_balls_in_zone"].sum(),
+                              roster_batting_df["swings_in_zone"].sum())
+    
+    team_contact   = safe_div(roster_batting_df["contacted_balls"].sum(),
+                              roster_batting_df["swings"].sum())
+    
+    team_o_contact = safe_div(roster_batting_df["contacted_balls_out_zone"].sum(),
+                              roster_batting_df["swings_out_zone"].sum())
+    
+    team_o_swing   = safe_div(roster_batting_df["swings_out_zone"].sum(),
+                              roster_batting_df["pitches_out_zone"].sum())
+
+
+    # --- Team wOBA ---
+    team_woba_numerator = (
+        wBB  * bb +
+        wHBP * hbp +
+        w1B  * one_b +
+        w2B  * two_b +
+        w3B  * three_b +
+        wHR  * hr
+    )
+    
+    team_woba = team_woba_numerator / pa if pa > 0 else 0
+    
+    
+    # --- Team wRAA ---
+    team_wraa = ((team_woba - league_woba) / wOBAScale) * pa if pa > 0 else 0
+    
+    
+    # --- Team wRC ---
+    team_wrc = team_wraa + (R_PA_lg * pa)
+    
+    
+    # --- Team wRC+ ---
+    team_wrc_plus = 100 * ((team_wrc / pa) / R_PA_lg) if pa > 0 else 0
+
+
+    team_df = pd.DataFrame({
+        'gamePk': [game_id],
+        'officialDate': [game_official_date],
+        'team_name': [team_name],
+        'team_id': [team_id],
+        "K%": [k_perc],
+        "GB%": [gb_perc],
+        "FB%": [fb_perc],
+        "LD%": [ld_perc],
+        "BB%": [bb_perc],
+        "ISO": [iso],
+        "BABIP": [babip],
+        "AVG": [avg],
+        "OBP": [obp],
+        "SLG": [slg],
+        "BB/K": [bb_k],
+        "HR/FB": [hr_fb],
+        "Hard%": [team_hard],
+        "O-Swing%": [team_o_swing],
+        "Z-Swing%": [team_z_swing],
+        "Z-Contact%": [team_z_contact],
+        "Contact%": [team_contact],
+        "O-Contact%": [team_o_contact],
+        'SO': [team_counting_stats_results['SO']],
+        'GDP': [team_counting_stats_results['GDP']],
+        '1B': [team_counting_stats_results['1B']],
+        '2B': [team_counting_stats_results['2B']],
+        '3B': [team_counting_stats_results['3B']],
+        'HR': [team_counting_stats_results['HR']],
+        'BB': [team_counting_stats_results['BB']],
+        'SF': [team_counting_stats_results['SF']],
+        'HBP': [team_counting_stats_results['HBP']],
+        'H': [team_counting_stats_results['H']],
+        'GB': [team_counting_stats_results['GB']],
+        'FB': [team_counting_stats_results['FB']],
+        'LD': [team_counting_stats_results['LD']],
+        "wOBA": [team_woba],
+        "wRAA": [team_wraa],
+        "wRC": [team_wrc],
+        "wRC+": [team_wrc_plus]
+    })
+    team_df['hitter_player_ids'] = [team_batters_player_ids]
+    team_df['update date'] = datetime.now(pytz.timezone("America/New_York"))
+
+    return team_df
+
+def process_batter_splits():
+    
+    data_list_rhp = []
+    data_list_lhp = []
+    for i in range(1,4):
+        data_rhp = batter_splits(2, i)
+        data_list_rhp.append(data_rhp)
+        data_lhp = batter_splits(1, i)
+        data_list_lhp.append(data_lhp)
+    
+    merge_keys = ['Season', 'playerName', 'playerId']
+    
+    hitters_rhps = reduce(
+        lambda left, right: left.merge(right, on=merge_keys, how='outer'),
+        data_list_rhp
+    )
+    hitters_lhps = reduce(
+        lambda left, right: left.merge(right, on=merge_keys, how='outer'),
+        data_list_lhp
+    )
+    hitters_both = hitters_rhps.merge(
+        hitters_lhps,
+        on=merge_keys,
+        how='inner',
+        suffixes=("_vs_rhp", "_vs_lhp")
+    )
+
+    hitters_both['wOBA_splits'] = hitters_both['wOBA_vs_lhp'] - hitters_both['wOBA_vs_rhp']
+    hitters_both['ISO_splits'] = hitters_both['ISO_vs_lhp'] - hitters_both['ISO_vs_rhp']
+    hitters_both['BB%_splits'] = hitters_both['BB%_vs_lhp'] - hitters_both['BB%_vs_rhp']
+    hitters_both['K%_splits'] = hitters_both['K%_vs_lhp'] - hitters_both['K%_vs_rhp']
+
+    hitters_both['update date'] = datetime.now(pytz.timezone("America/New_York"))
+
+  
+    batter_splits_df = hitters_both
+
+    return batter_splits_df
+
+def compute_count_stats_pitcher(statcast_df) :
+    
+    pitcher_ids = statcast_df['pitcher'].unique()
+    
+    pitcher_df = pd.DataFrame(index=pitcher_ids)
+    
+    pitcher_df["xMLBAMID"] = pitcher_df.index
+
+    throws_lookup = (
+    statcast_df.groupby("pitcher")["p_throws"]
+    .first()                     # or .unique().str[0]
+    .rename("Throws")
+    )
+
+    pitcher_df["Throws"] = pitcher_df["xMLBAMID"].map(throws_lookup)
+
+    season = statcast_df['game_year'].unique()
+    
+    pitcher_df['season'] = season[0]
+    
+    strike_zone = [1,2,3,4,5,6,7,8,9]
+    
+    
+    swinging_strike_event_list = ['swinging_strike', 'swinging_strike_blocked']
+    
+    contact_event_list = ['foul', 'foul_tip', 'hit_into_play', 'foul_pitchout']
+    
+    strike_event_list = [
+        'foul', 'foul_tip', 'hit_into_play', 'foul_pitchout',
+        'swinging_strike', 'swinging_strike_blocked', 'called_strike'
+    ]
+    
+    swing_event_list = contact_event_list + swinging_strike_event_list
+    
+    strike_out_event_list = ['strikeout', 'strikeout_double_play']
+    
+    walk_event_list = ['walk', 'intent_walk']
+    
+    out_event_list = [
+        'grounded_into_double_play',
+        'field_out',
+        'force_out',
+        'fielders_choice_out',
+        'double_play',
+        'triple_play',
+        'sac_fly',
+        'sac_fly_double_play',
+        'strikeout',
+        'strikeout_double_play'
+    ]
+    
+    hit_event_list = [
+        'single',
+        'double',
+        'triple',
+        'home_run'
+    ]
+    
+    ###### Calculate Raw Counts ######
+    
+    pitches = (statcast_df
+                     .groupby('pitcher')
+                     .size()
+                    )
+
+    games_played = (
+    statcast_df
+    .groupby(['pitcher', 'game_pk'])
+    .size()
+    .reset_index()
+    .groupby('pitcher')['game_pk']
+    .nunique()
+    )
+    
+    pitches_in_strike_zone = (statcast_df[statcast_df['zone'].isin(strike_zone)]
+                              .groupby('pitcher')
+                              .size()
+                             )
+    
+    pitches_outside_strike_zone = (statcast_df[~statcast_df['zone'].isin(strike_zone)]
+                              .groupby('pitcher')
+                              .size()
+                             )
+    
+    
+    swings = (statcast_df[statcast_df['description'].isin(swing_event_list)]
+                     .groupby('pitcher')
+                     .size()
+                    )
+    
+    swings_in_strike_zone = (statcast_df[statcast_df['zone'].isin(strike_zone) & statcast_df['description'].isin(swing_event_list)]
+                              .groupby('pitcher')
+                              .size()
+                             )
+    
+    swings_outside_strike_zone = (statcast_df[~statcast_df['zone'].isin(strike_zone) & statcast_df['description'].isin(swing_event_list)]
+                              .groupby('pitcher')
+                              .size()
+                             )
+    
+    contacted_balls = (statcast_df[statcast_df['description'].isin(contact_event_list)]
+                     .groupby('pitcher')
+                     .size()
+                    )
+    
+    contacted_balls_in_strike_zone = (statcast_df[statcast_df['zone'].isin(strike_zone) & statcast_df['description'].isin(contact_event_list)]
+                     .groupby('pitcher')
+                     .size()
+                    )
+    
+    contacted_balls_outside_strike_zone = (statcast_df[~statcast_df['zone'].isin(strike_zone) & statcast_df['description'].isin(contact_event_list)]
+                     .groupby('pitcher')
+                     .size()
+                    )
+    
+    whiffed_balls = (statcast_df[statcast_df['description'].isin(swinging_strike_event_list)]
+                     .groupby('pitcher')
+                     .size()
+                    )
+    
+    whiffed_balls_in_strike_zone = (statcast_df[statcast_df['zone'].isin(strike_zone) & statcast_df['description'].isin(swinging_strike_event_list)]
+                     .groupby('pitcher')
+                     .size()
+                    )
+    
+    whiffed_balls_outside_strike_zone = (statcast_df[~statcast_df['zone'].isin(strike_zone) & statcast_df['description'].isin(swinging_strike_event_list)]
+                     .groupby('pitcher')
+                     .size()
+                    )
+    
+    called_strikes = (statcast_df[statcast_df['description'] == 'called_strike']
+                              .groupby('pitcher')
+                              .size()
+                             )
+    
+    first_pitches = (
+        statcast_df[statcast_df['pitch_number'] == 1]
+        .groupby('pitcher')
+        .size()
+    )
+    
+    first_pitch_strikes = (
+        statcast_df[
+            (statcast_df['pitch_number'] == 1) &
+            (statcast_df['description'].isin(strike_event_list))
+        ]
+        .groupby('pitcher')
+        .size()
+    )
+    
+    strike_outs = (statcast_df[statcast_df['events'].isin(strike_out_event_list)]
+                              .groupby('pitcher')
+                              .size()
+                             )
+    
+    walks = (statcast_df[statcast_df['events'].isin(walk_event_list)]
+                              .groupby('pitcher')
+                              .size()
+                             )
+    
+    hit_by_pitch = (statcast_df[statcast_df['events'] == 'hit_by_pitch']
+                              .groupby('pitcher')
+                              .size()
+                             )
+    
+    outs = (statcast_df[statcast_df['events'].isin(out_event_list)]
+                              .groupby('pitcher')
+                              .size()
+                             )
+    
+    hits = (statcast_df[statcast_df['events'].isin(hit_event_list)]
+                              .groupby('pitcher')
+                              .size()
+                             )
+    
+    homeruns = (statcast_df[statcast_df['events'] == 'home_run']
+                              .groupby('pitcher')
+                              .size()
+                             )
+    
+    ip = outs / 3.0
+    
+    ########### batted ball section ######################
+    
+    pitcher_df_filtered_contact_only = statcast_df[statcast_df['bb_type'].notna()].copy()
+    
+    line_drives = (pitcher_df_filtered_contact_only[pitcher_df_filtered_contact_only['bb_type'] == 'line_drive']
+                   .groupby('pitcher')
+                   .size()
+                  )
+    
+    ground_balls = (pitcher_df_filtered_contact_only[pitcher_df_filtered_contact_only['bb_type'] == 'ground_ball']
+                   .groupby('pitcher')
+                   .size()
+                  )
+    
+    fly_balls = (pitcher_df_filtered_contact_only[pitcher_df_filtered_contact_only['bb_type'] == 'fly_ball']
+                   .groupby('pitcher')
+                   .size()
+                  )
+    popups = (pitcher_df_filtered_contact_only[pitcher_df_filtered_contact_only['bb_type'] == 'popup']
+                   .groupby('pitcher')
+                   .size()
+                  )
+    
+    batted_balls = (
+        pitcher_df_filtered_contact_only
+            .groupby('pitcher')
+            .size()
+    )
+    
+    hard_hit_balls = (
+        pitcher_df_filtered_contact_only[pitcher_df_filtered_contact_only['launch_speed'] >= 95]
+            .groupby('pitcher')
+            .size()
+    )
+    
+    exit_velo = pitcher_df_filtered_contact_only['launch_speed']
+    launch_angle = pitcher_df_filtered_contact_only['launch_angle']
+    
+    min_launch_angle = 26 - (exit_velo - 98)
+    max_launch_angle = 30 + (exit_velo - 98)
+    
+    min_launch_angle = min_launch_angle.clip(lower=8)
+    max_launch_angle = max_launch_angle.clip(upper=50)
+    
+    pitcher_df_filtered_contact_only['barrel'] = (
+        (exit_velo >= 98) &
+        (launch_angle >= min_launch_angle) &
+        (launch_angle <= max_launch_angle)
+    )
+    
+    barrel_balls = (
+        pitcher_df_filtered_contact_only[pitcher_df_filtered_contact_only['barrel']]
+            .groupby('pitcher')
+            .size()
+    )
+    
+    launch_speed_sum = (
+        pitcher_df_filtered_contact_only
+            .groupby('pitcher')['launch_speed']
+            .sum()
+    )
+    
+    launch_angle_sum = (
+        pitcher_df_filtered_contact_only
+            .groupby('pitcher')['launch_angle']
+            .sum()
+    )
+    
+    xwoba_allowed = (
+        statcast_df
+        .groupby("pitcher")["estimated_woba_using_speedangle"]
+        .sum()
+    )
+    
+    league_xwoba = 0.3162979120429958
+    
+    league_era = 4.15
+    
+    season = statcast_df['game_year'].unique()
+    
+    
+    ########################### add counts ###########################
+    pitcher_df['games_played'] = games_played
+    
+    pitcher_df['IP'] = ip
+    pitcher_df["pitches"] = pitches
+    pitcher_df["pitches_in_zone"] = pitches_in_strike_zone
+    pitcher_df["pitches_out_zone"] = pitches_outside_strike_zone
+    pitcher_df["swings"] = swings
+    pitcher_df["swings_in_zone"] = swings_in_strike_zone
+    pitcher_df["swings_out_zone"] = swings_outside_strike_zone
+    
+    pitcher_df["contacted_balls"] = contacted_balls
+    pitcher_df["contacted_balls_in_zone"] = contacted_balls_in_strike_zone
+    pitcher_df["contacted_balls_out_zone"] = contacted_balls_outside_strike_zone
+    
+    pitcher_df["whiffs"] = whiffed_balls
+    pitcher_df["whiffs_in_zone"] = whiffed_balls_in_strike_zone
+    pitcher_df["whiffs_out_zone"] = whiffed_balls_outside_strike_zone
+    
+    pitcher_df["called_strikes"] = called_strikes
+    
+    pitcher_df["first_pitches"] = first_pitches
+    pitcher_df["first_pitch_strikes"] = first_pitch_strikes
+    
+    pitcher_df["strikeouts"] = strike_outs
+    pitcher_df["walks"] = walks
+    pitcher_df["hit_by_pitch"] = hit_by_pitch
+    pitcher_df["outs"] = outs
+    pitcher_df["hits"] = hits
+    pitcher_df["home_runs"] = homeruns
+    
+    pitcher_df["ground_balls"] = ground_balls
+    pitcher_df["fly_balls"] = fly_balls
+    pitcher_df["line_drives"] = line_drives
+    pitcher_df["popups"] = popups
+    
+    pitcher_df["batted_balls"] = batted_balls
+    pitcher_df["hard_hit_balls"] = hard_hit_balls
+    pitcher_df["barrel_balls"] = barrel_balls
+    pitcher_df["launch_speed_sum"] = launch_speed_sum
+    pitcher_df["launch_angle_sum"] = launch_angle_sum
+    
+    pitcher_df['xWOBA_allowed'] = xwoba_allowed
+
+    return(pitcher_df)
+
+def calculate_pitcher_stats(pitcher_df):
+    #pull in pitcher_seasonal_data from database
+
+    pitcher_df = pitcher_df.drop(columns=['season'])
+    
+    pitcher_data_sums = (pitcher_df
+             .groupby('xMLBAMID')
+             .sum(numeric_only=True)
+            )
+    
+    pitcher_data_sums['xMLBAMID'] = pitcher_data_sums.index
+    
+    pitcher_data_sums["batters_faced"] = (
+        pitcher_data_sums["strikeouts"] +
+        pitcher_data_sums["walks"] +
+        pitcher_data_sums["hit_by_pitch"] +
+        pitcher_data_sums["batted_balls"]
+    )
+    
+    
+    # --- Contact quality ---
+    pitcher_data_sums["EV"] = pitcher_data_sums["launch_speed_sum"] / pitcher_data_sums["batted_balls"]
+    pitcher_data_sums["LA"] = pitcher_data_sums["launch_angle_sum"] / pitcher_data_sums["batted_balls"]
+    pitcher_data_sums["Hard%"] = pitcher_data_sums["hard_hit_balls"] / pitcher_data_sums["batted_balls"]
+    pitcher_data_sums["Barrel%"] = pitcher_data_sums["barrel_balls"] / pitcher_data_sums["batted_balls"]
+    
+    # --- Batted-ball profile ---
+    pitcher_data_sums["GB%"] = pitcher_data_sums["ground_balls"] / pitcher_data_sums["batted_balls"]
+    pitcher_data_sums["FB%"] = pitcher_data_sums["fly_balls"] / pitcher_data_sums["batted_balls"]
+    pitcher_data_sums["LD%"] = pitcher_data_sums["line_drives"] / pitcher_data_sums["batted_balls"]
+    pitcher_data_sums["HR/FB"] = pitcher_data_sums["home_runs"] / pitcher_data_sums["fly_balls"]
+    
+    # --- Plate discipline ---
+    pitcher_data_sums["Zone%"] = pitcher_data_sums["pitches_in_zone"] / pitcher_data_sums["pitches"]
+    pitcher_data_sums["Z-Swing%"] = pitcher_data_sums["swings_in_zone"] / pitcher_data_sums["pitches_in_zone"]
+    pitcher_data_sums["O-Swing%"] = pitcher_data_sums["swings_out_zone"] / pitcher_data_sums["pitches_out_zone"]
+    
+    pitcher_data_sums["Contact%"] = pitcher_data_sums["contacted_balls"] / pitcher_data_sums["swings"]
+    pitcher_data_sums["Z-Contact%"] = pitcher_data_sums["contacted_balls_in_zone"] / pitcher_data_sums["swings_in_zone"]
+    pitcher_data_sums["O-Contact%"] = pitcher_data_sums["contacted_balls_out_zone"] / pitcher_data_sums["swings_out_zone"]
+    
+    pitcher_data_sums["SwStr%"] = pitcher_data_sums["whiffs"] / pitcher_data_sums["pitches"]
+    pitcher_data_sums["C+SwStr%"] = (pitcher_data_sums["called_strikes"] + pitcher_data_sums["whiffs"]) / pitcher_data_sums["pitches"]
+    
+    pitcher_data_sums["F-Strike%"] = pitcher_data_sums["first_pitch_strikes"] / pitcher_data_sums["first_pitches"]
+    
+    # --- K/BB family ---
+    pitcher_data_sums["K%"] = pitcher_data_sums["strikeouts"] / pitcher_data_sums["batters_faced"]
+    pitcher_data_sums["BB%"] = pitcher_data_sums["walks"] / pitcher_data_sums["batters_faced"]
+    pitcher_data_sums["K/BB"] = pitcher_data_sums["strikeouts"] / pitcher_data_sums["walks"]
+    pitcher_data_sums["K-BB%"] = pitcher_data_sums["K%"] - pitcher_data_sums["BB%"]
+    
+    # --- Run prevention ---
+    pitcher_data_sums["WHIP"] = (pitcher_data_sums["walks"] + pitcher_data_sums["hits"]) / pitcher_data_sums["IP"]
+    pitcher_data_sums["BABIP"] = (pitcher_data_sums["hits"] - pitcher_data_sums["home_runs"]) / (pitcher_data_sums["batted_balls"] - pitcher_data_sums["home_runs"])
+    
+    # --- xERA ---
+    pitcher_data_sums["xwOBA"] = pitcher_data_sums["xWOBA_allowed"] / pitcher_data_sums["batted_balls"]
+    
+    
+    league_xwoba = 0.3162979120429958
+        
+    league_era = 4.15
+    
+    fip_constant = 3.1495185210234546
+    
+    
+    # You supply league_xwOBA and league_ERA from your 2025 benchmark
+    pitcher_data_sums["xERA"] = league_era + (pitcher_data_sums["xwOBA"] - league_xwoba) * 1.15 * 9
+    
+    pitcher_data_sums["FIP"] = (
+        (13 * pitcher_data_sums["home_runs"] +
+         3 * (pitcher_data_sums["walks"] + pitcher_data_sums["hit_by_pitch"]) -
+         2 * pitcher_data_sums["strikeouts"]) / pitcher_data_sums["IP"]
+    ) + fip_constant
+
+        # Attach Throws after aggregation
+    throws_lookup = (
+        pitcher_df.groupby("xMLBAMID")["Throws"]
+        .first()
+    )
+    
+    pitcher_data_sums["Throws"] = pitcher_data_sums["xMLBAMID"].map(throws_lookup)
+
+    return(pitcher_data_sums)
+
+def compute_count_stats_batter(statcast_df):
+    
+    batter_ids = statcast_df['batter'].unique()
+    
+    batter_df = pd.DataFrame(index=batter_ids)
+    
+    batter_df["xMLBAMID"] = batter_df.index
+    
+    season = statcast_df['game_year'].unique()
+    
+    batter_df['season'] = season[0]
+    
+    strike_zone = [1,2,3,4,5,6,7,8,9]
+    
+    swinging_strike_event_list = ['swinging_strike', 'swinging_strike_blocked']
+    
+    contact_event_list = ['foul', 'foul_tip', 'hit_into_play', 'foul_pitchout']
+    
+    strike_event_list = [
+        'foul', 'foul_tip', 'hit_into_play', 'foul_pitchout',
+        'swinging_strike', 'swinging_strike_blocked', 'called_strike'
+    ]
+    
+    swing_event_list = contact_event_list + swinging_strike_event_list
+    
+    strike_out_event_list = ['strikeout', 'strikeout_double_play']
+    
+    walk_event_list = ['walk', 'intent_walk']
+    
+    out_event_list = [
+        'grounded_into_double_play',
+        'field_out',
+        'force_out',
+        'fielders_choice_out',
+        'double_play',
+        'triple_play',
+        'sac_fly',
+        'sac_fly_double_play',
+        'strikeout',
+        'strikeout_double_play'
+    ]
+    
+    hit_event_list = [
+        'single',
+        'double',
+        'triple',
+        'home_run'
+    ]
+
+    non_ab_events = [
+    'walk',
+    'intent_walk',
+    'hit_by_pitch',
+    'sac_bunt',
+    'sac_fly',
+    'catcher_interf'
+    ]
+
+    ###### Calculate Raw Counts ######
+    
+    event_only = statcast_df[statcast_df['events'].notna()]
+    
+    games_played = (
+    statcast_df
+    .groupby(['batter', 'game_pk'])
+    .size()
+    .reset_index()
+    .groupby('batter')['game_pk']
+    .nunique()
+    )
+
+    stance_lookup = (
+    statcast_df.groupby("batter")["stand"]
+    .first()                     # or .unique().str[0]
+    .rename("Stance")
+    )
+
+    batter_df["Stance"] = batter_df["xMLBAMID"].map(stance_lookup)
+
+    
+    plate_appearances = (event_only
+          .groupby('batter')
+          .size()
+         )
+
+    ab_only = statcast_df[statcast_df['events'].notna() &(~statcast_df['events'].isin(non_ab_events))]
+    
+    at_bats = (ab_only
+               .groupby('batter')
+               .size()
+              )
+    
+    pitches = (statcast_df
+                     .groupby('batter')
+                     .size()
+                    )
+    
+    pitches_in_strike_zone = (statcast_df[statcast_df['zone'].isin(strike_zone)]
+                              .groupby('batter')
+                              .size()
+                             )
+    
+    pitches_outside_strike_zone = (statcast_df[~statcast_df['zone'].isin(strike_zone)]
+                              .groupby('batter')
+                              .size()
+                             )
+    
+    
+    swings = (statcast_df[statcast_df['description'].isin(swing_event_list)]
+                     .groupby('batter')
+                     .size()
+                    )
+    
+    swings_in_strike_zone = (statcast_df[statcast_df['zone'].isin(strike_zone) & statcast_df['description'].isin(swing_event_list)]
+                              .groupby('batter')
+                              .size()
+                             )
+    
+    swings_outside_strike_zone = (statcast_df[~statcast_df['zone'].isin(strike_zone) & statcast_df['description'].isin(swing_event_list)]
+                              .groupby('batter')
+                              .size()
+                             )
+    
+    contacted_balls = (statcast_df[statcast_df['description'].isin(contact_event_list)]
+                     .groupby('batter')
+                     .size()
+                    )
+    
+    contacted_balls_in_strike_zone = (statcast_df[statcast_df['zone'].isin(strike_zone) & statcast_df['description'].isin(contact_event_list)]
+                     .groupby('batter')
+                     .size()
+                    )
+    
+    contacted_balls_outside_strike_zone = (statcast_df[~statcast_df['zone'].isin(strike_zone) & statcast_df['description'].isin(contact_event_list)]
+                     .groupby('batter')
+                     .size()
+                    )
+    
+    whiffed_balls = (statcast_df[statcast_df['description'].isin(swinging_strike_event_list)]
+                     .groupby('batter')
+                     .size()
+                    )
+    
+    whiffed_balls_in_strike_zone = (statcast_df[statcast_df['zone'].isin(strike_zone) & statcast_df['description'].isin(swinging_strike_event_list)]
+                     .groupby('batter')
+                     .size()
+                    )
+    
+    whiffed_balls_outside_strike_zone = (statcast_df[~statcast_df['zone'].isin(strike_zone) & statcast_df['description'].isin(swinging_strike_event_list)]
+                     .groupby('batter')
+                     .size()
+                    )
+    
+    called_strikes = (statcast_df[statcast_df['description'] == 'called_strike']
+                              .groupby('batter')
+                              .size()
+                             )
+    
+    
+    strike_outs = (statcast_df[statcast_df['events'].isin(strike_out_event_list)]
+                              .groupby('batter')
+                              .size()
+                             )
+    
+    walks = (statcast_df[statcast_df['events'].isin(walk_event_list)]
+                              .groupby('batter')
+                              .size()
+                             )
+    
+    hit_by_pitch = (statcast_df[statcast_df['events'] == 'hit_by_pitch']
+                              .groupby('batter')
+                              .size()
+                             )
+    
+    outs = (statcast_df[statcast_df['events'].isin(out_event_list)]
+                              .groupby('batter')
+                              .size()
+                             )
+    
+    hits = (statcast_df[statcast_df['events'].isin(hit_event_list)]
+                              .groupby('batter')
+                              .size()
+                             )
+
+    singles = (statcast_df[statcast_df['events'] == 'single']
+                                  .groupby('batter')
+                                  .size()
+                                 )
+    doubles = (statcast_df[statcast_df['events'] == 'double']
+                                  .groupby('batter')
+                                  .size()
+                                 )
+    triples = (statcast_df[statcast_df['events'] == 'triple']
+                                  .groupby('batter')
+                                  .size()
+                                 )
+    homeruns = (statcast_df[statcast_df['events'] == 'home_run']
+                              .groupby('batter')
+                              .size()
+                             )
+
+    sac_flys = (statcast_df[statcast_df['events'] == 'sac_fly']
+                                  .groupby('batter')
+                                  .size()
+                                 )
+
+    gdps = (statcast_df[statcast_df['events'] == 'grounded_into_double_play']
+                                  .groupby('batter')
+                                  .size()
+                                 )
+    
+    ########### batted ball section ######################
+    
+    batter_df_filtered_contact_only = statcast_df[statcast_df['bb_type'].notna()].copy()
+    
+    line_drives = (batter_df_filtered_contact_only[batter_df_filtered_contact_only['bb_type'] == 'line_drive']
+                   .groupby('batter')
+                   .size()
+                  )
+    
+    ground_balls = (batter_df_filtered_contact_only[batter_df_filtered_contact_only['bb_type'] == 'ground_ball']
+                   .groupby('batter')
+                   .size()
+                  )
+    
+    fly_balls = (batter_df_filtered_contact_only[batter_df_filtered_contact_only['bb_type'] == 'fly_ball']
+                   .groupby('batter')
+                   .size()
+                  )
+    popups = (batter_df_filtered_contact_only[batter_df_filtered_contact_only['bb_type'] == 'popup']
+                   .groupby('batter')
+                   .size()
+                  )
+    
+    batted_balls = (
+        batter_df_filtered_contact_only
+            .groupby('batter')
+            .size()
+    )
+    
+    hard_hit_balls = (
+        batter_df_filtered_contact_only[batter_df_filtered_contact_only['launch_speed'] >= 95]
+            .groupby('batter')
+            .size()
+    )
+    
+    exit_velo = batter_df_filtered_contact_only['launch_speed']
+    launch_angle = batter_df_filtered_contact_only['launch_angle']
+    
+    min_launch_angle = 26 - (exit_velo - 98)
+    max_launch_angle = 30 + (exit_velo - 98)
+    
+    min_launch_angle = min_launch_angle.clip(lower=8)
+    max_launch_angle = max_launch_angle.clip(upper=50)
+    
+    batter_df_filtered_contact_only['barrel'] = (
+        (exit_velo >= 98) &
+        (launch_angle >= min_launch_angle) &
+        (launch_angle <= max_launch_angle)
+    )
+    
+    barrel_balls = (
+        batter_df_filtered_contact_only[batter_df_filtered_contact_only['barrel']]
+            .groupby('batter')
+            .size()
+    )
+    
+    launch_speed_sum = (
+        batter_df_filtered_contact_only
+            .groupby('batter')['launch_speed']
+            .sum()
+    )
+    
+    launch_angle_sum = (
+        batter_df_filtered_contact_only
+            .groupby('batter')['launch_angle']
+            .sum()
+    )
+    
+    
+    
+    ########################### add counts ###########################
+    batter_df['games_played'] = games_played
+    batter_df["AB"] = at_bats
+    batter_df["PA"] = plate_appearances
+    batter_df["pitches"] = pitches
+    batter_df["pitches_in_zone"] = pitches_in_strike_zone
+    batter_df["pitches_out_zone"] = pitches_outside_strike_zone
+    batter_df["swings"] = swings
+    batter_df["swings_in_zone"] = swings_in_strike_zone
+    batter_df["swings_out_zone"] = swings_outside_strike_zone
+    
+    batter_df["contacted_balls"] = contacted_balls
+    batter_df["contacted_balls_in_zone"] = contacted_balls_in_strike_zone
+    batter_df["contacted_balls_out_zone"] = contacted_balls_outside_strike_zone
+    
+    batter_df["whiffs"] = whiffed_balls
+    batter_df["whiffs_in_zone"] = whiffed_balls_in_strike_zone
+    batter_df["whiffs_out_zone"] = whiffed_balls_outside_strike_zone
+    
+    batter_df["called_strikes"] = called_strikes
+    
+    batter_df["SO"] = strike_outs
+    batter_df["BB"] = walks
+    batter_df["HBP"] = hit_by_pitch
+    batter_df["outs"] = outs
+    batter_df["H"] = hits
+    batter_df["1B"] = singles
+    batter_df["2B"] = doubles
+    batter_df["3B"] = triples
+    batter_df["GDP"] = gdps
+    batter_df["SF"] = sac_flys
+    batter_df["HR"] = homeruns
+    
+    batter_df["GB"] = ground_balls
+    batter_df["FB"] = fly_balls
+    batter_df["LD"] = line_drives
+    batter_df["PU"] = popups
+    
+    batter_df["batted_balls"] = batted_balls
+    batter_df["hard_hit_balls"] = hard_hit_balls
+    batter_df["barrel_balls"] = barrel_balls
+    batter_df["launch_speed_sum"] = launch_speed_sum
+    batter_df["launch_angle_sum"] = launch_angle_sum
+
+    return(batter_df)
