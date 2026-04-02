@@ -1,0 +1,212 @@
+{
+    "Fenway Park": {
+        "team_name": "Boston Red Sox",
+        "team_id": 111,
+        "team_home_timezone": "America/New_York",
+        "team_home_venue_longitude": -71.0972,
+        "team_home_venue_latitude": 42.3467
+    },
+    "Sutter Health Park": {
+        "team_name": "Athletics",
+        "team_id": 133,
+        "team_home_timezone": "America/Los_Angeles",
+        "team_home_venue_longitude": -121.5,
+        "team_home_venue_latitude": 38.58
+    },
+    "Oracle Park": {
+        "team_name": "San Francisco Giants",
+        "team_id": 137,
+        "team_home_timezone": "America/Los_Angeles",
+        "team_home_venue_longitude": -122.3893,
+        "team_home_venue_latitude": 37.7786
+    },
+    "Citizens Bank Park": {
+        "team_name": "Philadelphia Phillies",
+        "team_id": 143,
+        "team_home_timezone": "America/New_York",
+        "team_home_venue_longitude": -75.1665,
+        "team_home_venue_latitude": 39.9057
+    },
+    "Nationals Park": {
+        "team_name": "Washington Nationals",
+        "team_id": 120,
+        "team_home_timezone": "America/New_York",
+        "team_home_venue_longitude": -77.0074,
+        "team_home_venue_latitude": 38.873
+    },
+    "Yankee Stadium": {
+        "team_name": "New York Yankees",
+        "team_id": 147,
+        "team_home_timezone": "America/New_York",
+        "team_home_venue_longitude": -73.9262,
+        "team_home_venue_latitude": 40.8296
+    },
+    "Angel Stadium": {
+        "team_name": "Los Angeles Angels",
+        "team_id": 108,
+        "team_home_timezone": "America/Los_Angeles",
+        "team_home_venue_longitude": -117.8827,
+        "team_home_venue_latitude": 33.8003
+    },
+    "Rogers Centre": {
+        "team_name": "Toronto Blue Jays",
+        "team_id": 141,
+        "team_home_timezone": "America/Toronto",
+        "team_home_venue_longitude": -79.3892,
+        "team_home_venue_latitude": 43.6414
+    },
+    "Petco Park": {
+        "team_name": "San Diego Padres",
+        "team_id": 135,
+        "team_home_timezone": "America/Los_Angeles",
+        "team_home_venue_longitude": -117.157,
+        "team_home_venue_latitude": 32.7073
+    },
+    "T-Mobile Park": {
+        "team_name": "Seattle Mariners",
+        "team_id": 136,
+        "team_home_timezone": "America/Los_Angeles",
+        "team_home_venue_longitude": -122.3321,
+        "team_home_venue_latitude": 47.5914
+    },
+    "Progressive Field": {
+        "team_name": "Cleveland Guardians",
+        "team_id": 114,
+        "team_home_timezone": "America/New_York",
+        "team_home_venue_longitude": -81.6853,
+        "team_home_venue_latitude": 41.4962
+    },
+    "loanDepot park": {
+        "team_name": "Miami Marlins",
+        "team_id": 146,
+        "team_home_timezone": "America/New_York",
+        "team_home_venue_longitude": -80.2197,
+        "team_home_venue_latitude": 25.7781
+    },
+    "American Family Field": {
+        "team_name": "Milwaukee Brewers",
+        "team_id": 158,
+        "team_home_timezone": "America/Chicago",
+        "team_home_venue_longitude": -87.9712,
+        "team_home_venue_latitude": 43.028
+    },
+    "Truist Park": {
+        "team_name": "Atlanta Braves",
+        "team_id": 144,
+        "team_home_timezone": "America/New_York",
+        "team_home_venue_longitude": -84.4678,
+        "team_home_venue_latitude": 33.8907
+    },
+    "Wrigley Field": {
+        "team_name": "Chicago Cubs",
+        "team_id": 112,
+        "team_home_timezone": "America/Chicago",
+        "team_home_venue_longitude": -87.6553,
+        "team_home_venue_latitude": 41.9484
+    },
+    "Comerica Park": {
+        "team_name": "Detroit Tigers",
+        "team_id": 116,
+        "team_home_timezone": "America/Detroit",
+        "team_home_venue_longitude": -83.0485,
+        "team_home_venue_latitude": 42.339
+    },
+    "Kauffman Stadium": {
+        "team_name": "Kansas City Royals",
+        "team_id": 118,
+        "team_home_timezone": "America/Chicago",
+        "team_home_venue_longitude": -94.4803,
+        "team_home_venue_latitude": 39.051
+    },
+    "Coors Field": {
+        "team_name": "Colorado Rockies",
+        "team_id": 115,
+        "team_home_timezone": "America/Denver",
+        "team_home_venue_longitude": -104.9942,
+        "team_home_venue_latitude": 39.7559
+    },
+    "Target Field": {
+        "team_name": "Minnesota Twins",
+        "team_id": 142,
+        "team_home_timezone": "America/Chicago",
+        "team_home_venue_longitude": -93.2776,
+        "team_home_venue_latitude": 44.9817
+    },
+    "Guaranteed Rate Field": {
+        "team_name": "Chicago White Sox",
+        "team_id": 145,
+        "team_home_timezone": "America/Chicago",
+        "team_home_venue_longitude": -87.6339,
+        "team_home_venue_latitude": 41.83
+    },
+    "Oriole Park at Camden Yards": {
+        "team_name": "Baltimore Orioles",
+        "team_id": 110,
+        "team_home_timezone": "America/New_York",
+        "team_home_venue_longitude": -76.6219,
+        "team_home_venue_latitude": 39.2839
+    },
+    "Minute Maid Park": {
+        "team_name": "Houston Astros",
+        "team_id": 117,
+        "team_home_timezone": "America/Chicago",
+        "team_home_venue_longitude": -95.3555,
+        "team_home_venue_latitude": 29.7572
+    },
+    "Tropicana Field": {
+        "team_name": "Tampa Bay Rays",
+        "team_id": 139,
+        "team_home_timezone": "America/New_York",
+        "team_home_venue_longitude": -82.6534,
+        "team_home_venue_latitude": 27.7683
+    },
+    "Chase Field": {
+        "team_name": "Arizona Diamondbacks",
+        "team_id": 109,
+        "team_home_timezone": "America/Phoenix",
+        "team_home_venue_longitude": -112.0667,
+        "team_home_venue_latitude": 33.4453
+    },
+    "Dodger Stadium": {
+        "team_name": "Los Angeles Dodgers",
+        "team_id": 119,
+        "team_home_timezone": "America/Los_Angeles",
+        "team_home_venue_longitude": -118.24,
+        "team_home_venue_latitude": 34.0739
+    },
+    "Globe Life Field": {
+        "team_name": "Texas Rangers",
+        "team_id": 140,
+        "team_home_timezone": "America/Chicago",
+        "team_home_venue_longitude": -97.082,
+        "team_home_venue_latitude": 32.7513
+    },
+    "Citi Field": {
+        "team_name": "New York Mets",
+        "team_id": 121,
+        "team_home_timezone": "America/New_York",
+        "team_home_venue_longitude": -73.8458,
+        "team_home_venue_latitude": 40.7571
+    },
+    "Great American Ball Park": {
+        "team_name": "Cincinnati Reds",
+        "team_id": 113,
+        "team_home_timezone": "America/New_York",
+        "team_home_venue_longitude": -84.507,
+        "team_home_venue_latitude": 39.0975
+    },
+    "PNC Park": {
+        "team_name": "Pittsburgh Pirates",
+        "team_id": 134,
+        "team_home_timezone": "America/New_York",
+        "team_home_venue_longitude": -80.0057,
+        "team_home_venue_latitude": 40.4469
+    },
+    "Busch Stadium": {
+        "team_name": "St. Louis Cardinals",
+        "team_id": 138,
+        "team_home_timezone": "America/Chicago",
+        "team_home_venue_longitude": -90.1928,
+        "team_home_venue_latitude": 38.6226
+    }
+}
