@@ -4,9 +4,6 @@ import statsapi
 import json
 import pandas as pd
 
-from data_extract_functions.extract_mlb_games_info import games_today_with_pitchers
-
-
 def games_today(game_date=None):
     
     if game_date is None:
