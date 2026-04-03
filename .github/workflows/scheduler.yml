@@ -1,1 +1,32 @@
 
+name: Run MLB Scheduler
+
+on:
+  schedule:
+    - cron: "0 13 * * *"   # Runs at 9 AM ET every day
+  workflow_dispatch:        # Allows manual runs from the Actions tab
+
+jobs:
+  run-scheduler:
+    runs-on: ubuntu-latest
+
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run MLB scheduler
+        run: python data_scheduler/run_today_scheduler.py
