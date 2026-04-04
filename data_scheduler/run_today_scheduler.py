@@ -15,8 +15,6 @@ def main():
     # 1. Get today's date
     today = date.today().strftime("%Y-%m-%d")
 
-    run_daily_team_travel_update()
-
     # 2. Pull today's games
     games = games_today(today)
 
