@@ -165,3 +165,94 @@ def extract_todays_games_schedule(game_date=None) :
     combined_team_df = pd.concat([home_team_df, away_team_df], ignore_index=True)
     
     return combined_team_df
+
+def get_current_pitcher_ids():
+    pitcher_ids = set()
+
+
+    # 1. Get all MLB teams
+    teams = requests.get("https://statsapi.mlb.com/api/v1/teams?sportId=1").json()["teams"]
+
+    for team in teams:
+        team_id = team["id"]
+
+        # 2. Get roster for each team
+        roster_url = f"https://statsapi.mlb.com/api/v1/teams/{team_id}/roster"
+        roster = requests.get(roster_url).json()["roster"]
+
+        # 3. Filter pitchers
+        for player in roster:
+            if player["position"]["type"] == "Pitcher":
+                pitcher_ids.add(player["person"]["id"])
+
+
+    return (pitcher_ids)
+
+def get_current_batter_ids():
+
+    batter_ids = set()
+
+    # 1. Get all MLB teams
+    teams = requests.get("https://statsapi.mlb.com/api/v1/teams?sportId=1").json()["teams"]
+
+    for team in teams:
+        team_id = team["id"]
+
+        # 2. Get roster for each team
+        roster_url = f"https://statsapi.mlb.com/api/v1/teams/{team_id}/roster"
+        roster = requests.get(roster_url).json()["roster"]
+
+        # 3. Filter pitchers
+        for player in roster:
+            if player["position"]["type"] != "Pitcher":
+                batter_ids.add(player["person"]["id"])
+
+
+    return (batter_ids)
+
+def get_batter_info_and_stats_season(batter_id, season=2026):
+    url = f"https://statsapi.mlb.com/api/v1/people/{batter_id}/stats"
+    params = {
+        "stats": "season",
+        "group": "hitting",
+        "season": season
+    }
+
+    request = requests.get(url, params=params).json()
+
+    # If request failed or empty
+    if not request:
+        return None
+
+    # Guard: stats list missing or empty
+    stats_list = request.get('stats', [])
+    if not stats_list:
+        return None
+
+    # Guard: splits missing or empty
+    splits = stats_list[0].get('splits', [])
+    if not splits:
+        return None
+
+    # Safe to access now
+    batter_details = splits[0]
+
+    # Safe extraction
+    player_info = batter_details.get('player', {})
+    team_info = batter_details.get('team', {})
+
+    batter_df = pd.DataFrame({
+        'xMLBAMID': [player_info.get('id')],
+        'player_name': [player_info.get('fullName')],
+        'team_id': [team_info.get('id')],  # None if missing
+        'team_name': [team_info.get('name')],  # None if missing
+        'season': [batter_details.get('season')]
+    })
+
+    # Normalize stat block
+    batter_details_normalize = pd.json_normalize(batter_details['stat'])
+
+    # Combine horizontally
+    batter_df = pd.concat([batter_df, batter_details_normalize], axis=1)
+
+    return batter_df
