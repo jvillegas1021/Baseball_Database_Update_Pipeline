@@ -155,7 +155,7 @@ def process_team_pitching_df(game_id: int, game_official_date, team_name: str, t
 
 
 def process_team_batting_df(game_id: int, game_official_date, team_name: str, team_id: int, team_batters_player_ids: list[int],
-                            all_batter_stats: pd.DataFrame) -> pd.DataFrame:
+                            all_batter_stats_statsapi: pd.DataFrame, all_batter_stats_statcast: pd.DataFrame) -> pd.DataFrame:
     wBB = 0.691
     wHBP = 0.722
     w1B = 0.882
@@ -167,21 +167,34 @@ def process_team_batting_df(game_id: int, game_official_date, team_name: str, te
     wOBAScale = 1.232
     R_PA_lg = 0.118
 
-    roster_batting_df = all_batter_stats[all_batter_stats['xMLBAMID'].isin(team_batters_player_ids)]
+    # merge dfs
+
+    all_batter_stats_combined = pd.merge(
+        all_batter_stats_statsapi,
+        all_batter_stats_statcast,
+        how='left',
+        on=['xMLBAMID', 'season']
+    )
+    
+    roster_batting_df = all_batter_stats_combined[
+        all_batter_stats_combined['xMLBAMID'].isin(team_batters_player_ids)
+        ].copy()
+
     
     if roster_batting_df.empty or roster_batting_df.empty:
         return None
 
+    roster_batting_df['singles'] = roster_batting_df['hits'] - roster_batting_df['homeRuns'] - roster_batting_df['triples'] - roster_batting_df['doubles']
+    
     # Counting stats projected to 162 games (talent-ish, per-game played)
     count_stats = [
-    'SO', 'GDP', '1B', '2B', '3B', 'HR', 'BB', 'SF', 'HBP',
-    'H', 'GB', 'FB', 'LD', 'AB', 'PA'
+    'strikeOuts', 'hits', 'groundIntoDoublePlay', 'singles', 'doubles', 'triples', 'homeRuns', 'baseOnBalls', 'sacFlies', 'hitByPitch', 'GB', 'FB', 'LD', 'atBats', 'plateAppearances'
     ]
     
     team_counting_stats_results = {}
     
     # Player-level games played
-    g = roster_batting_df['games_played']
+    g = roster_batting_df['gamesPlayed']
     
     for stat in count_stats:
         stat_values = roster_batting_df[stat]
@@ -196,21 +209,21 @@ def process_team_batting_df(game_id: int, game_official_date, team_name: str, te
         team_counting_stats_results[stat] = stat_162_player.sum()
 
 
-    h     = team_counting_stats_results['H']
-    ab    = team_counting_stats_results['AB']
-    bb    = team_counting_stats_results['BB']
-    sf    = team_counting_stats_results['SF']
-    hbp   = team_counting_stats_results['HBP']
+    h     = team_counting_stats_results['hits']
+    ab    = team_counting_stats_results['atBats']
+    bb    = team_counting_stats_results['baseOnBalls']
+    sf    = team_counting_stats_results['sacFlies']
+    hbp   = team_counting_stats_results['hitByPitch']
     gb    = team_counting_stats_results['GB']
     fb    = team_counting_stats_results['FB']
     ld    = team_counting_stats_results['LD']
-    pa    = team_counting_stats_results['PA']
-    one_b = team_counting_stats_results['1B']
-    two_b = team_counting_stats_results['2B']
-    three_b = team_counting_stats_results['3B']
-    hr    = team_counting_stats_results['HR']
-    so    = team_counting_stats_results['SO']
-    gdp   = team_counting_stats_results['GDP']
+    pa    = team_counting_stats_results['plateAppearances']
+    one_b = team_counting_stats_results['singles']
+    two_b = team_counting_stats_results['doubles']
+    three_b = team_counting_stats_results['triples']
+    hr    = team_counting_stats_results['homeRuns']
+    so    = team_counting_stats_results['strikeOuts']
+    gdp   = team_counting_stats_results['groundIntoDoublePlay']
 
 
     k_perc = so / pa if pa > 0 else 0
@@ -297,16 +310,16 @@ def process_team_batting_df(game_id: int, game_official_date, team_name: str, te
         "Z-Contact%": [team_z_contact],
         "Contact%": [team_contact],
         "O-Contact%": [team_o_contact],
-        'SO': [team_counting_stats_results['SO']],
-        'GDP': [team_counting_stats_results['GDP']],
-        '1B': [team_counting_stats_results['1B']],
-        '2B': [team_counting_stats_results['2B']],
-        '3B': [team_counting_stats_results['3B']],
-        'HR': [team_counting_stats_results['HR']],
-        'BB': [team_counting_stats_results['BB']],
-        'SF': [team_counting_stats_results['SF']],
-        'HBP': [team_counting_stats_results['HBP']],
-        'H': [team_counting_stats_results['H']],
+        'SO': [team_counting_stats_results['strikeOuts']],
+        'GDP': [team_counting_stats_results['groundIntoDoublePlay']],
+        '1B': [team_counting_stats_results['singles']],
+        '2B': [team_counting_stats_results['doubles']],
+        '3B': [team_counting_stats_results['triples']],
+        'HR': [team_counting_stats_results['homeRuns']],
+        'BB': [team_counting_stats_results['baseOnBalls']],
+        'SF': [team_counting_stats_results['sacFlies']],
+        'HBP': [team_counting_stats_results['hitByPitch']],
+        'H': [team_counting_stats_results['hits']],
         'GB': [team_counting_stats_results['GB']],
         'FB': [team_counting_stats_results['FB']],
         'LD': [team_counting_stats_results['LD']],
@@ -754,13 +767,22 @@ def calculate_pitcher_stats(pitcher_df):
 
     return(pitcher_data_sums)
 
-def compute_count_stats_batter(statcast_df):
+def compute_count_stats_batter_statcast(statcast_df):
     
     batter_ids = statcast_df['batter'].unique()
     
     batter_df = pd.DataFrame(index=batter_ids)
     
     batter_df["xMLBAMID"] = batter_df.index
+
+    stance_lookup = (
+    statcast_df.groupby("batter")["stand"]
+    .unique()                      # returns array of unique stances
+    .apply(lambda x: "S" if len(x) > 1 else x[0])
+    .rename("Stance")
+    )
+
+    batter_df["Stance"] = batter_df["xMLBAMID"].map(stance_lookup)
     
     season = statcast_df['game_year'].unique()
     
@@ -815,36 +837,7 @@ def compute_count_stats_batter(statcast_df):
     ###### Calculate Raw Counts ######
     
     event_only = statcast_df[statcast_df['events'].notna()]
-    
-    games_played = (
-    statcast_df
-    .groupby(['batter', 'game_pk'])
-    .size()
-    .reset_index()
-    .groupby('batter')['game_pk']
-    .nunique()
-    )
 
-    stance_lookup = (
-    statcast_df.groupby("batter")["stand"]
-    .first()                     # or .unique().str[0]
-    .rename("Stance")
-    )
-
-    batter_df["Stance"] = batter_df["xMLBAMID"].map(stance_lookup)
-
-    
-    plate_appearances = (event_only
-          .groupby('batter')
-          .size()
-         )
-
-    ab_only = statcast_df[statcast_df['events'].notna() &(~statcast_df['events'].isin(non_ab_events))]
-    
-    at_bats = (ab_only
-               .groupby('batter')
-               .size()
-              )
     
     pitches = (statcast_df
                      .groupby('batter')
@@ -913,57 +906,7 @@ def compute_count_stats_batter(statcast_df):
                              )
     
     
-    strike_outs = (statcast_df[statcast_df['events'].isin(strike_out_event_list)]
-                              .groupby('batter')
-                              .size()
-                             )
     
-    walks = (statcast_df[statcast_df['events'].isin(walk_event_list)]
-                              .groupby('batter')
-                              .size()
-                             )
-    
-    hit_by_pitch = (statcast_df[statcast_df['events'] == 'hit_by_pitch']
-                              .groupby('batter')
-                              .size()
-                             )
-    
-    outs = (statcast_df[statcast_df['events'].isin(out_event_list)]
-                              .groupby('batter')
-                              .size()
-                             )
-    
-    hits = (statcast_df[statcast_df['events'].isin(hit_event_list)]
-                              .groupby('batter')
-                              .size()
-                             )
-
-    singles = (statcast_df[statcast_df['events'] == 'single']
-                                  .groupby('batter')
-                                  .size()
-                                 )
-    doubles = (statcast_df[statcast_df['events'] == 'double']
-                                  .groupby('batter')
-                                  .size()
-                                 )
-    triples = (statcast_df[statcast_df['events'] == 'triple']
-                                  .groupby('batter')
-                                  .size()
-                                 )
-    homeruns = (statcast_df[statcast_df['events'] == 'home_run']
-                              .groupby('batter')
-                              .size()
-                             )
-
-    sac_flys = (statcast_df[statcast_df['events'] == 'sac_fly']
-                                  .groupby('batter')
-                                  .size()
-                                 )
-
-    gdps = (statcast_df[statcast_df['events'] == 'grounded_into_double_play']
-                                  .groupby('batter')
-                                  .size()
-                                 )
     
     ########### batted ball section ######################
     
@@ -1036,9 +979,7 @@ def compute_count_stats_batter(statcast_df):
     
     
     ########################### add counts ###########################
-    batter_df['games_played'] = games_played
-    batter_df["AB"] = at_bats
-    batter_df["PA"] = plate_appearances
+    
     batter_df["pitches"] = pitches
     batter_df["pitches_in_zone"] = pitches_in_strike_zone
     batter_df["pitches_out_zone"] = pitches_outside_strike_zone
@@ -1055,18 +996,6 @@ def compute_count_stats_batter(statcast_df):
     batter_df["whiffs_out_zone"] = whiffed_balls_outside_strike_zone
     
     batter_df["called_strikes"] = called_strikes
-    
-    batter_df["SO"] = strike_outs
-    batter_df["BB"] = walks
-    batter_df["HBP"] = hit_by_pitch
-    batter_df["outs"] = outs
-    batter_df["H"] = hits
-    batter_df["1B"] = singles
-    batter_df["2B"] = doubles
-    batter_df["3B"] = triples
-    batter_df["GDP"] = gdps
-    batter_df["SF"] = sac_flys
-    batter_df["HR"] = homeruns
     
     batter_df["GB"] = ground_balls
     batter_df["FB"] = fly_balls
