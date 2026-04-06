@@ -2,7 +2,7 @@ from datetime import datetime
 import pandas as pd
 
 from data_extract_functions.extract_mlb_games_info import games_today_with_teams_and_lineups_and_bullpens
-from data_extract_functions.extract_data_from_database import batting_data, pitching_data, pull_data_from_neon_sql_database
+from data_extract_functions.extract_data_from_database import batter_seasonal_data_statsapi, batter_seasonal_data_statcast, pitching_data, pull_data_from_neon_sql_database
 
 from data_transform_functions.process_functions import process_team_batting_df, process_team_pitching_df
 
@@ -21,9 +21,10 @@ def run_daily_roster_update(game_date=None):
 
     if not teams_playing:
         return
-    
 
-    batting_df = batting_data()
+
+    batting_df_statsapi = batter_seasonal_data_statsapi()
+    batting_df_statcast = batter_seasonal_data_statcast()
     
     pitching_df = pitching_data() 
 
@@ -33,13 +34,24 @@ def run_daily_roster_update(game_date=None):
     # test function
     for game_id, game_official_date, team_name, team_id, batter_list, pitcher_list in teams_playing:
         
-        team_batting_df = process_team_batting_df(game_id, game_official_date, team_name, team_id, batter_list, batting_df)
+        team_batting_df = process_team_batting_df(game_id,
+                                                  game_official_date,
+                                                  team_name,
+                                                  team_id,
+                                                  batter_list,
+                                                  batting_df_statsapi,
+                                                  batting_df_statcast)
         
         if team_batting_df is not None:
             all_team_batting_df_list.append(team_batting_df)
             
         
-        team_pitching_df = process_team_pitching_df(game_id, game_official_date, team_name, team_id, pitcher_list, pitching_df)
+        team_pitching_df = process_team_pitching_df(game_id,
+                                                    game_official_date,
+                                                    team_name,
+                                                    team_id,
+                                                    pitcher_list,
+                                                    pitching_df)
 
         if team_pitching_df is not None:
             all_team_pitching_df_list.append(team_pitching_df)
