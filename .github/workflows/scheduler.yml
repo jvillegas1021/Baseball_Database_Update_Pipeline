@@ -3,7 +3,7 @@ name: Run MLB Scheduler
 
 on:
   schedule:
-    - cron: "0 13 * * *"   # Runs at 9 AM ET every day
+    - cron: "50 15 * * *"   # Runs at 11:50 AM ET every day
   workflow_dispatch:        # Allows manual runs from the Actions tab
 
 jobs:
