@@ -188,6 +188,53 @@ def get_current_pitcher_ids():
 
     return (pitcher_ids)
 
+def get_pitcher_info_and_stats_season(pitcher_id, season=2026):
+    url = f"https://statsapi.mlb.com/api/v1/people/{pitcher_id}/stats"
+    params = {
+        "stats": "season",
+        "group": "pitching",
+        "season": season
+    }
+
+    request = requests.get(url, params=params).json()
+
+    # If request failed or empty
+    if not request:
+        return None
+
+    # Guard: stats list missing or empty
+    stats_list = request.get('stats', [])
+    if not stats_list:
+        return None
+
+    # Guard: splits missing or empty
+    splits = stats_list[0].get('splits', [])
+    if not splits:
+        return None
+
+    # Safe to access now
+    pitcher_details = splits[0]
+
+    # Safe extraction
+    player_info = pitcher_details.get('player', {})
+    team_info = pitcher_details.get('team', {})
+
+    pitcher_df = pd.DataFrame({
+        'xMLBAMID': [player_info.get('id')],
+        'player_name': [player_info.get('fullName')],
+        'team_id': [team_info.get('id')],  # None if missing
+        'team_name': [team_info.get('name')],  # None if missing
+        'season': [pitcher_details.get('season')]
+    })
+
+    # Normalize stat block
+    pitcher_details_normalize = pd.json_normalize(pitcher_details['stat'])
+
+    # Combine horizontally
+    pitcher_df = pd.concat([pitcher_df, pitcher_details_normalize], axis=1)
+
+    return pitcher_df
+
 def get_current_batter_ids():
 
     batter_ids = set()

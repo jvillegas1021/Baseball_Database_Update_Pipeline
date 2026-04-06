@@ -40,3 +40,22 @@ def pitching_data():
     df = pull_data_from_neon_sql_database(query)
     
     return df
+def pitcher_seasonal_data_statcast():
+    query = """
+    select *
+    from pitcher_seasonal_data_statcast
+    """
+    
+    df = pull_data_from_neon_sql_database(query)
+    
+    return df
+
+def pitcher_seasonal_data_statsapi():
+    query = """
+    select *
+    from pitcher_seasonal_data_statsapi
+    """
+    
+    df = pull_data_from_neon_sql_database(query)
+    
+    return df
