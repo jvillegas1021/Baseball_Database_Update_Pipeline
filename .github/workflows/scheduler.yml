@@ -1,5 +1,5 @@
 
-name: Run MLB Scheduler
+name: Run Roster Stats Update Scheduler
 
 on:
   schedule:
@@ -32,4 +32,4 @@ jobs:
         run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
 
       - name: Run MLB scheduler
-        run: python data_scheduler/run_today_scheduler.py
+        run: python data_scheduler/run_roster_update_scheduler.py
