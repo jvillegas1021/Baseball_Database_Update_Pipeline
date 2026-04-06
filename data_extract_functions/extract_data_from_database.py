@@ -11,10 +11,20 @@ def pull_data_from_neon_sql_database(query: str):
 
     return df
 
-def batting_data():
+def batter_seasonal_data_statcast():
     query = """
     select *
-    from batter_seasonal_data
+    from batter_seasonal_data_statcast
+    """
+    
+    df = pull_data_from_neon_sql_database(query)
+    
+    return df
+
+def batter_seasonal_data_statsapi():
+    query = """
+    select *
+    from batter_seasonal_data_statsapi
     """
     
     df = pull_data_from_neon_sql_database(query)
