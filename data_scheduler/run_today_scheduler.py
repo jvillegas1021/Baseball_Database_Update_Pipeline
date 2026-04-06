@@ -11,7 +11,7 @@ from pipelines.daily_pitcher_recent_form_update import run_starting_pitchers_rec
 from pipelines.daily_team_travel_update import run_daily_team_travel_update
 
 
-def main():
+def roster_stats_update():
     # 1. Get today's date
     today = date.today().strftime("%Y-%m-%d")
 
@@ -48,4 +48,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    roster_stats_update()
