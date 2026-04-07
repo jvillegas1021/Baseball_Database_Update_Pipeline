@@ -4,9 +4,6 @@ import pytz
 import numpy as np
 from functools import reduce
 
-
-
-
 from data_extract_functions.extract_player_data import batter_splits
 
 from data_transform_functions.utility_functions import filter_relievers, safe_div, convert_ip
@@ -22,140 +19,119 @@ def process_batter_df(batter_df: pd.DataFrame) -> pd.DataFrame:
 
 
 
-def process_team_pitching_df(game_id: int, game_official_date, team_name: str, team_id: int, team_pitchers_player_ids: list[int],
-                            all_pitching_stats_df: pd.DataFrame) -> pd.DataFrame:
+def process_team_pitching_df(
+        game_id: int,
+        game_official_date,
+        team_name: str,
+        team_id: int,
+        team_pitchers_player_ids: list[int],
+        all_pitcher_stats_statsapi: pd.DataFrame,
+        all_pitcher_stats_statcast: pd.DataFrame
+    ) -> pd.DataFrame:
 
-    if all_pitching_stats_df.empty:
+    # --- Merge full pitcher dataset ---
+    all_pitcher_stats_combined = pd.merge(
+        all_pitcher_stats_statsapi,
+        all_pitcher_stats_statcast,
+        how='left',
+        on=['xMLBAMID', 'season']
+    )
+
+    # --- Filter to pitchers on this team ---
+    roster_pitching_df = all_pitcher_stats_combined[
+        all_pitcher_stats_combined['xMLBAMID'].isin(team_pitchers_player_ids)
+    ].copy()
+
+    if roster_pitching_df.empty:
         return None
 
+    # --- Sum all numeric stats ---
+    team = roster_pitching_df.sum(numeric_only=True)
 
-    relievers_df = filter_relievers(all_pitching_stats_df)
+    # --- Constants ---
+    league_xwoba = 0.3162979120429958
+    league_era = 4.15
+    fip_constant = 3.1495185210234546
 
-
-    if relievers_df.empty:
-        return None
-
-
-    if 'xMLBAMID' not in relievers_df.columns or 'xMLBAMID' not in relievers_df.columns:
-        return None
-
-    roster_pitching_df = relievers_df[
-        relievers_df['xMLBAMID'].isin(team_pitchers_player_ids)]
-    
-
-    if roster_pitching_df.empty or roster_pitching_df.empty:
-        return None
-
-        
-    
-    # start counting stat process
-    # start counting stat process
-
-    g = roster_pitching_df  # shorthand
-    
-    team = {}
-    
-    # --- Totals ---
-    team["strikeouts"] = g["strikeouts"].sum()
-    team["walks"] = g["walks"].sum()
-    team["hits"] = g["hits"].sum()
-    team["home_runs"] = g["home_runs"].sum()
-    team["ground_balls"] = g["ground_balls"].sum()
-    team["fly_balls"] = g["fly_balls"].sum()
-    team["line_drives"] = g["line_drives"].sum()
-    team["batted_balls"] = g["batted_balls"].sum()
-    team["whiffs"] = g["whiffs"].sum()
-    team["swings"] = g["swings"].sum()
-    team["pitches"] = g["pitches"].sum()
-    team["pitches_in_zone"] = g["pitches_in_zone"].sum()
-    team["swings_in_zone"] = g["swings_in_zone"].sum()
-    team["swings_out_zone"] = g["swings_out_zone"].sum()
-    team["contacted_balls"] = g["contacted_balls"].sum()
-    team["contacted_balls_in_zone"] = g["contacted_balls_in_zone"].sum()
-    team["contacted_balls_out_zone"] = g["contacted_balls_out_zone"].sum()
-    team["first_pitch_strikes"] = g["first_pitch_strikes"].sum()
-    team["first_pitches"] = g["first_pitches"].sum()
-    team["launch_speed_sum"] = g["launch_speed_sum"].sum()
-    team["launch_angle_sum"] = g["launch_angle_sum"].sum()
-    team["xWOBA_allowed"] = g["xWOBA_allowed"].sum()
-    team["outs"] = g["outs"].sum()
-    team["hit_by_pitch"] = g["hit_by_pitch"].sum()
-    
     # --- Derived totals ---
     team["IP"] = team["outs"] / 3
-    team["batters_faced"] = (
-        team["strikeouts"] +
-        team["walks"] +
-        team["hit_by_pitch"] +
+    team["BF"] = (
+        team["strikeOuts"] +
+        team["baseOnBalls"] +
+        team["hitByPitch"] +
         team["batted_balls"]
     )
-    
-    # --- Rate stats ---
-    team["K%"] = safe_div(team["strikeouts"], team["batters_faced"])
-    team["BB%"] = safe_div(team["walks"] , team["batters_faced"])
-    team["K-BB%"] = team["K%"] - team["BB%"]
-    team["K/BB"] = safe_div(team["strikeouts"] , team["walks"])
-    team["SwStr%"] = safe_div(team["whiffs"] , team["pitches"])
-    team["Contact%"] = safe_div(team["contacted_balls"] , team["swings"])
-    team["Z-Contact%"] = safe_div(team["contacted_balls_in_zone"] , team["swings_in_zone"])
-    team["O-Contact%"] = safe_div(team["contacted_balls_out_zone"] , team["swings_out_zone"])
-    team["GB%"] = safe_div(team["ground_balls"] , team["batted_balls"])
-    team["FB%"] = safe_div(team["fly_balls"] , team["batted_balls"])
-    team["LD%"] = safe_div(team["line_drives"] , team["batted_balls"])
-    team["HR/FB"] = safe_div(team["home_runs"] , team["fly_balls"])
-    team["EV"] = safe_div(team["launch_speed_sum"] , team["batted_balls"])
-    team["LA"] = safe_div(team["launch_angle_sum"] , team["batted_balls"])
-    team["Hard%"] = safe_div(g["hard_hit_balls"].sum() , team["batted_balls"])
-    team["Barrel%"] = safe_div(g["barrel_balls"].sum() , team["batted_balls"])
 
-    # --- Missing plate-discipline stats (add these) ---
-    team["Zone%"] = safe_div(team["pitches_in_zone"] , team["pitches"])
-    
-    team["Z-Swing%"] = safe_div(team["swings_in_zone"] , team["pitches_in_zone"])
-    
-    team["O-Swing%"] = safe_div(team["swings_out_zone"] , (team["pitches"] - team["pitches_in_zone"]))
-    
-    team["C+SwStr%"] = safe_div((team["first_pitch_strikes"] + team["whiffs"]) , team["pitches"])
-    
-    team["F-Strike%"] = safe_div(team["first_pitch_strikes"] , team["first_pitches"])
-
-    
     # --- Run prevention ---
-    team["WHIP"] = safe_div((team["walks"] + team["hits"]) , team["IP"])
-    team["BABIP"] = safe_div((team["hits"] - team["home_runs"]) , (team["batted_balls"] - team["home_runs"]))
-    
-    # xERA + FIP (same constants you use in pitcher benchmark)
-    
-    # constants
+    team["ERA"] = (team["earnedRuns"] / team["IP"]) * 9
+    team["WHIP"] = (team["baseOnBalls"] + team["hits"]) / team["IP"]
+    team["BABIP"] = (team["hits"] - team["homeRuns"]) / (
+        team["batted_balls"] - team["homeRuns"]
+    )
+    team["RS/9"] = (team["runs"] / team["IP"]) * 9
+    team["HR/9"] = (team["homeRuns"] / team["IP"]) * 9
 
-    league_xwoba = 0.3162979120429958
-        
-    league_era = 4.15
-    
-    fip_constant = 3.1495185210234546
-    
+    # --- K/BB family ---
+    team["K%"] = team["strikeOuts"] / team["BF"]
+    team["BB%"] = team["baseOnBalls"] / team["BF"]
+    team["K-BB%"] = team["K%"] - team["BB%"]
+    team["K/BB"] = team["strikeOuts"] / team["baseOnBalls"]
+    team["K/9"] = (team["strikeOuts"] / team["IP"]) * 9
+
+    # --- Contact quality ---
+    team["EV"] = team["launch_speed_sum"] / team["batted_balls"]
+    team["LA"] = team["launch_angle_sum"] / team["batted_balls"]
+    team["Hard%"] = team["hard_hit_balls"] / team["batted_balls"]
+    team["Barrel%"] = team["barrel_balls"] / team["batted_balls"]
+
+    team["GB%"] = team["ground_balls"] / team["batted_balls"]
+    team["FB%"] = team["fly_balls"] / team["batted_balls"]
+    team["LD%"] = team["line_drives"] / team["batted_balls"]
+    team["HR/FB"] = team["homeRuns"] / team["fly_balls"]
+
+    team["DP%"] = team["groundIntoDoublePlay"] / (
+        team["BF"] - team["strikeOuts"] - team["baseOnBalls"] - team["hitByPitch"]
+    )
+
+    team["GO/AO"] = team["groundOuts"] / team["airOuts"]
+
+    # --- Plate discipline ---
+    team["Zone%"] = team["pitches_in_zone"] / team["pitches"]
+    team["Z-Swing%"] = team["swings_in_zone"] / team["pitches_in_zone"]
+    team["O-Swing%"] = team["swings_out_zone"] / (team["pitches"] - team["pitches_in_zone"])
+
+    team["Contact%"] = team["contacted_balls"] / team["swings"]
+    team["Z-Contact%"] = team["contacted_balls_in_zone"] / team["swings_in_zone"]
+    team["O-Contact%"] = team["contacted_balls_out_zone"] / team["swings_out_zone"]
+
+    team["SwStr%"] = team["whiffs"] / team["pitches"]
+    team["C+SwStr%"] = (team["called_strikes"] + team["whiffs"]) / team["pitches"]
+    team["F-Strike%"] = team["first_pitch_strikes"] / team["first_pitches"]
+
+    # --- xERA ---
     team_xwoba = team["xWOBA_allowed"] / team["batted_balls"]
     team["xERA"] = league_era + (team_xwoba - league_xwoba) * 1.15 * 9
-    
+
+    # --- FIP ---
     team["FIP"] = (
-        (13 * team["home_runs"] +
-         3 * (team["walks"] + team["hit_by_pitch"]) -
-         2 * team["strikeouts"]) / team["IP"]
+        (13 * team["homeRuns"] +
+         3 * (team["baseOnBalls"] + team["hitByPitch"]) -
+         2 * team["strikeOuts"]) / team["IP"]
     ) + fip_constant
 
+    # --- Build final DataFrame ---
     identifiers = {
-    "gamePk": game_id,
-    "officialDate": game_official_date,
-    "team_name": team_name,
-    "team_id": team_id
+        "gamePk": game_id,
+        "officialDate": game_official_date,
+        "team_name": team_name,
+        "team_id": team_id
     }
-    
-    team_df = pd.DataFrame([{**identifiers, **team}])
 
-    team_df['update date'] = datetime.now(pytz.timezone("America/New_York"))
-
+    team_df = pd.DataFrame([{**identifiers, **team.to_dict()}])
+    team_df["update date"] = datetime.now(pytz.timezone("America/New_York"))
 
     return team_df
+
 
 
 def process_team_batting_df(game_id: int, game_official_date, team_name: str, team_id: int, team_batters_player_ids: list[int],
