@@ -2,12 +2,11 @@ from datetime import datetime
 import pandas as pd
 
 from data_extract_functions.extract_mlb_games_info import games_today_with_teams_and_lineups_and_bullpens
-from data_extract_functions.extract_data_from_database import batter_seasonal_data_statsapi, batter_seasonal_data_statcast, pitching_data, pull_data_from_neon_sql_database
+from data_extract_functions.extract_data_from_database import batter_seasonal_data_statsapi, batter_seasonal_data_statcast, pitcher_seasonal_data_statcast, pitcher_seasonal_data_statsapi, pull_data_from_neon_sql_database
 
 from data_transform_functions.process_functions import process_team_batting_df, process_team_pitching_df
 
 from data_load_functions.load_data_to_database import push_active_team_data_to_sql, push_historical_team_data_to_sql
-
 
 
 def run_daily_roster_update(game_date=None):
@@ -26,7 +25,8 @@ def run_daily_roster_update(game_date=None):
     batting_df_statsapi = batter_seasonal_data_statsapi()
     batting_df_statcast = batter_seasonal_data_statcast()
     
-    pitching_df = pitching_data() 
+    pitching_df_statsapi = pitcher_seasonal_data_statsapi()
+    pitching_df_statcast = pitcher_seasonal_data_statcast() 
 
     all_team_batting_df_list = []
     all_team_pitching_df_list = []
@@ -51,7 +51,8 @@ def run_daily_roster_update(game_date=None):
                                                     team_name,
                                                     team_id,
                                                     pitcher_list,
-                                                    pitching_df)
+                                                    pitching_df_statsapi,
+                                                    pitching_df_statcast)
 
         if team_pitching_df is not None:
             all_team_pitching_df_list.append(team_pitching_df)
