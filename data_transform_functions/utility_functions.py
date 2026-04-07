@@ -20,6 +20,14 @@ def filter_relievers(df):
     df["IP_per_G"] = df["IP"] / df["games_played"]
     return df[(df["IP_per_G"] < 3.0) & (df["IP"] >= 5)]
 
+def convert_ip(ip_series):
+    ip_series = ip_series.astype(float)
+    whole = ip_series.astype(int)
+    decimal = ip_series - whole
+    outs = (decimal * 10).round().astype(int)
+    return whole + outs / 3
+
+
 def compute_travel_distance_around_earth(team_travel_df):
     columns_to_radians = ['last_venue_longitude', 'last_venue_latitude', 'current_venue_longitude',
                           'current_venue_latitude']
