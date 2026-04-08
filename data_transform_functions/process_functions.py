@@ -1025,6 +1025,10 @@ def process_starting_pitcher_current_year_stats(pitcher_statsapi_df, pitcher_sta
     current_year_stats_df["strikeOuts"] / current_year_stats_df["inningsPitched"]
     ) * 9
 
+    current_year_stats_df["BB/9"] = (
+    current_year_stats_df["baseOnBalls"] / current_year_stats_df["inningsPitched"]
+    ) * 9
+    
     current_year_stats_df["BF_per_start"] = (
     current_year_stats_df["battersFaced"] / current_year_stats_df["gamesStarted"]
     )
@@ -1068,7 +1072,8 @@ def process_starting_pitcher_current_year_stats(pitcher_statsapi_df, pitcher_sta
     current_year_stats_df["Contact%"] = current_year_stats_df["contacted_balls"] / current_year_stats_df["swings"]
     current_year_stats_df["Z-Contact%"] = current_year_stats_df["contacted_balls_in_zone"] / current_year_stats_df["swings_in_zone"]
     current_year_stats_df["O-Contact%"] = current_year_stats_df["contacted_balls_out_zone"] / current_year_stats_df["swings_out_zone"]
-    
+
+    current_year_stats_df["Swing%"] = current_year_stats_df["swings"] / current_year_stats_df["pitches"]
     current_year_stats_df["SwStr%"] = current_year_stats_df["whiffs"] / current_year_stats_df["pitches"]
     current_year_stats_df["CStr%"] = current_year_stats_df["called_strikes"] / current_year_stats_df["pitches"]
     current_year_stats_df["C+SwStr%"] = (current_year_stats_df["called_strikes"] + current_year_stats_df["whiffs"]) / current_year_stats_df["pitches"]
@@ -1080,7 +1085,7 @@ def process_starting_pitcher_current_year_stats(pitcher_statsapi_df, pitcher_sta
     current_year_stats_df["BB%"] = current_year_stats_df["baseOnBalls"] / current_year_stats_df["battersFaced"]
     current_year_stats_df["K/BB"] = current_year_stats_df["strikeOuts"] / current_year_stats_df["baseOnBalls"]
     current_year_stats_df["K-BB%"] = current_year_stats_df["K%"] - current_year_stats_df["BB%"]
-    
+      
     current_year_stats_df["xwOBA"] = current_year_stats_df["xWOBA_allowed"] / current_year_stats_df["batted_balls"]
     
     # You supply league_xwOBA and league_ERA from your 2025 benchmark
@@ -1096,13 +1101,13 @@ def process_starting_pitcher_current_year_stats(pitcher_statsapi_df, pitcher_sta
         "wins", "losses", "ERA", "xERA", "FIP", "AVG", "WHIP", "BABIP", "RS/9", "H/9", "HR/9", "LOB%", "TTO%",
         
         # K/BB profile
-        "K%", "BB%", "K/BB", "K-BB%", "K/9",
+        "K%", "BB%", "K/BB", "K-BB%", "K/9", "BB/9",
         
         # Contact quality
         "EV", "LA", "HardHit%", "Med%", "Soft%", "Barrel%", "GB%", "FB%", "LD%", "GB/FB", "HR/FB", 'DP%', "IFFB%", 'GO/AO', 
         
         # Plate discipline
-        "Zone%", "Z-Swing%", "O-Swing%", "Contact%", "Z-Contact%", "O-Contact%",
+        "Swing%", "Zone%", "Z-Swing%", "O-Swing%", "Contact%", "Z-Contact%", "O-Contact%",
         "SwStr%", "CStr%", "C+SwStr%", "F-Strike%",
         
         # Baserunner control
@@ -1292,13 +1297,13 @@ def process_starting_pitcher_stats(pitcher_statsapi_df, pitcher_statcast_df):
         "ERA", "xERA", "FIP", "AVG", "WHIP", "BABIP", "RS/9", "H/9", "HR/9", "LOB%", "TTO%",
         
         # K/BB profile
-        "K%", "BB%", "K/BB", "K-BB%", "K/9",
+        "K%", "BB%", "K/BB", "K-BB%", "K/9", "BB/9",
         
         # Contact quality
         "EV", "LA", "HardHit%", "Med%", "Soft%", "Barrel%", "GB%", "FB%", "LD%", "HR/FB", 'DP%', "IFFB%", 'GO/AO', "GB/FB",
         
         # Plate discipline
-        "Zone%", "Z-Swing%", "O-Swing%", "Contact%", "Z-Contact%", "O-Contact%",
+        "Swing%","Zone%", "Z-Swing%", "O-Swing%", "Contact%", "Z-Contact%", "O-Contact%",
         "SwStr%", "CStr%", "C+SwStr%", "F-Strike%",
         
         # Baserunner control
