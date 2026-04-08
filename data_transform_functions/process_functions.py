@@ -683,7 +683,6 @@ def compute_count_stats_pitcher_statcast(statcast_df) :
     
     strike_zone = [1,2,3,4,5,6,7,8,9]
     
-    
     swinging_strike_event_list = ['swinging_strike', 'swinging_strike_blocked']
     
     contact_event_list = ['foul', 'foul_tip', 'hit_into_play', 'foul_pitchout']
@@ -718,6 +717,7 @@ def compute_count_stats_pitcher_statcast(statcast_df) :
         'triple',
         'home_run'
     ]
+
     
     ###### Calculate Raw Counts ######
     
@@ -744,7 +744,7 @@ def compute_count_stats_pitcher_statcast(statcast_df) :
                               .groupby('pitcher')
                               .size()
                              )
-    
+
     
     swings = (statcast_df[statcast_df['description'].isin(swing_event_list)]
                      .groupby('pitcher')
@@ -846,6 +846,19 @@ def compute_count_stats_pitcher_statcast(statcast_df) :
             .groupby('pitcher')
             .size()
     )
+
+    med_hit_balls = (
+        pitcher_df_filtered_contact_only[(pitcher_df_filtered_contact_only['launch_speed'] >= 80) & (pitcher_df_filtered_contact_only['launch_speed'] < 95)]
+            .groupby('pitcher')
+            .size()
+    )
+
+    soft_hit_balls = (
+        pitcher_df_filtered_contact_only[pitcher_df_filtered_contact_only['launch_speed'] < 80]
+            .groupby('pitcher')
+            .size()
+    )
+
     
     exit_velo = pitcher_df_filtered_contact_only['launch_speed']
     launch_angle = pitcher_df_filtered_contact_only['launch_angle']
@@ -879,6 +892,13 @@ def compute_count_stats_pitcher_statcast(statcast_df) :
             .groupby('pitcher')['launch_angle']
             .sum()
     )
+
+    # EV90 (90th percentile)
+    ev90 = (
+        pitcher_df_filtered_contact_only
+            .groupby('pitcher')['launch_speed']
+            .quantile(0.90)
+    )
     
     xwoba_allowed = (
         statcast_df
@@ -898,6 +918,7 @@ def compute_count_stats_pitcher_statcast(statcast_df) :
     pitcher_df["pitches"] = pitches
     pitcher_df["pitches_in_zone"] = pitches_in_strike_zone
     pitcher_df["pitches_out_zone"] = pitches_outside_strike_zone
+    
     pitcher_df["swings"] = swings
     pitcher_df["swings_in_zone"] = swings_in_strike_zone
     pitcher_df["swings_out_zone"] = swings_outside_strike_zone
@@ -948,6 +969,7 @@ def calculate_pitcher_stats(pitcher_df):
         pitcher_data_sums["hit_by_pitch"] +
         pitcher_data_sums["batted_balls"]
     )
+
     
     
     # --- Contact quality ---
@@ -970,8 +992,10 @@ def calculate_pitcher_stats(pitcher_df):
     pitcher_data_sums["Contact%"] = pitcher_data_sums["contacted_balls"] / pitcher_data_sums["swings"]
     pitcher_data_sums["Z-Contact%"] = pitcher_data_sums["contacted_balls_in_zone"] / pitcher_data_sums["swings_in_zone"]
     pitcher_data_sums["O-Contact%"] = pitcher_data_sums["contacted_balls_out_zone"] / pitcher_data_sums["swings_out_zone"]
+
     
     pitcher_data_sums["SwStr%"] = pitcher_data_sums["whiffs"] / pitcher_data_sums["pitches"]
+    pitcher_data_sums["CStr%"] = pitcher_data_sums["called_strikes"] / pitcher_data_sums["pitches"]
     pitcher_data_sums["C+SwStr%"] = (pitcher_data_sums["called_strikes"] + pitcher_data_sums["whiffs"]) / pitcher_data_sums["pitches"]
     
     pitcher_data_sums["F-Strike%"] = pitcher_data_sums["first_pitch_strikes"] / pitcher_data_sums["first_pitches"]
@@ -1074,6 +1098,10 @@ def process_starting_pitcher_current_year_stats(pitcher_statsapi_df, pitcher_sta
          current_year_stats_df["hitByPitch"] -
          1.4 * current_year_stats_df["homeRuns"])
     )
+
+    current_year_stats_df["TTO%"] = (current_year_stats_df['homeRuns'] + current_year_stats_df['baseOnBalls'] + current_year_stats_df['strikeOuts']) / current_year_stats_df['atBats']
+
+    pitcher_data_sums
     
     current_year_stats_df["RS/9"] = (
         current_year_stats_df["runs"] / current_year_stats_df["inningsPitched"]
@@ -1109,13 +1137,16 @@ def process_starting_pitcher_current_year_stats(pitcher_statsapi_df, pitcher_sta
 
     current_year_stats_df["EV"] = current_year_stats_df["launch_speed_sum"] / current_year_stats_df["batted_balls"]
     current_year_stats_df["LA"] = current_year_stats_df["launch_angle_sum"] / current_year_stats_df["batted_balls"]
-    current_year_stats_df["Hard%"] = current_year_stats_df["hard_hit_balls"] / current_year_stats_df["batted_balls"]
+    current_year_stats_df["HardHit%"] = current_year_stats_df["hard_hit_balls"] / current_year_stats_df["batted_balls"]
+    current_year_stats_df["Med%"] = current_year_stats_df["med_hit_balls"] / current_year_stats_df["batted_balls"]
+    current_year_stats_df["Soft%"] = current_year_stats_df["soft_hit_balls"] / current_year_stats_df["batted_balls"]
     current_year_stats_df["Barrel%"] = current_year_stats_df["barrel_balls"] / current_year_stats_df["batted_balls"]
     
     # --- Batted-ball profile ---
     current_year_stats_df["GB%"] = current_year_stats_df["ground_balls"] / current_year_stats_df["batted_balls"]
     current_year_stats_df["FB%"] = current_year_stats_df["fly_balls"] / current_year_stats_df["batted_balls"]
     current_year_stats_df["LD%"] = current_year_stats_df["line_drives"] / current_year_stats_df["batted_balls"]
+    current_year_stats_df["IFFB%"] = current_year_stats_df["popups"] / current_year_stats_df["fly_balls"]
     current_year_stats_df["HR/FB"] = current_year_stats_df["homeRuns"] / current_year_stats_df["fly_balls"]
     
     # --- Plate discipline ---
@@ -1128,6 +1159,7 @@ def process_starting_pitcher_current_year_stats(pitcher_statsapi_df, pitcher_sta
     current_year_stats_df["O-Contact%"] = current_year_stats_df["contacted_balls_out_zone"] / current_year_stats_df["swings_out_zone"]
     
     current_year_stats_df["SwStr%"] = current_year_stats_df["whiffs"] / current_year_stats_df["pitches"]
+    current_year_stats_df["CStr%"] = current_year_stats_df["called_strikes"] / current_year_stats_df["pitches"]
     current_year_stats_df["C+SwStr%"] = (current_year_stats_df["called_strikes"] + current_year_stats_df["whiffs"]) / current_year_stats_df["pitches"]
     
     current_year_stats_df["F-Strike%"] = current_year_stats_df["first_pitch_strikes"] / current_year_stats_df["first_pitches"]
@@ -1150,17 +1182,17 @@ def process_starting_pitcher_current_year_stats(pitcher_statsapi_df, pitcher_sta
         "gamesStarted", "inningsPitched", "battersFaced", 'IP_per_start', 'BF_per_start',
         
         # Results
-        "wins", "losses", "ERA", "xERA", "FIP", "AVG", "WHIP", "BABIP", "RS/9", "HR/9", "LOB%",
+        "wins", "losses", "ERA", "xERA", "FIP", "AVG", "WHIP", "BABIP", "RS/9", "H/9", "HR/9", "LOB%", "TTO%",
         
         # K/BB profile
         "K%", "BB%", "K/BB", "K-BB%", "K/9",
         
         # Contact quality
-        "EV", "LA", "Hard%", "Barrel%", "GB%", "FB%", "LD%", "HR/FB", 'DP%', 'GO/AO',
+        "EV", "LA", "HardHit%", "Med%", "Soft%", "Barrel%", "GB%", "FB%", "LD%", "HR/FB", 'DP%', "IFFB%", 'GO/AO', 
         
         # Plate discipline
         "Zone%", "Z-Swing%", "O-Swing%", "Contact%", "Z-Contact%", "O-Contact%",
-        "SwStr%", "C+SwStr%", "F-Strike%",
+        "SwStr%", "CStr%", "C+SwStr%", "F-Strike%",
         
         # Baserunner control
         "wildPitches", "balks", "pickoffs", "caughtStealing", "stolenBases"
@@ -1248,6 +1280,16 @@ def process_starting_pitcher_stats(pitcher_statsapi_df, pitcher_statcast_df):
          pitcher_data_sums["hitByPitch"] -
          1.4 * pitcher_data_sums["homeRuns"])
     )
+
+    pitcher_data_sums["TTO%"] = (pitcher_data_sums['homeRuns'] + pitcher_data_sums['baseOnBalls'] + pitcher_data_sums['strikeOuts']) / pitcher_data_sums['atBats']
+    
+    pitcher_data_sums["H/9"] = (
+        pitcher_data_sums["hits"] / pitcher_data_sums["inningsPitched"]
+    ) * 9
+
+    pitcher_data_sums["BB/9"] = (
+        pitcher_data_sums["baseOnBalls"] / pitcher_data_sums["inningsPitched"]
+    ) * 9
     
     pitcher_data_sums["RS/9"] = (
         pitcher_data_sums["runs"] / pitcher_data_sums["inningsPitched"]
@@ -1289,14 +1331,18 @@ def process_starting_pitcher_stats(pitcher_statsapi_df, pitcher_statcast_df):
     
     pitcher_data_sums["EV"] = pitcher_data_sums["launch_speed_sum"] / pitcher_data_sums["batted_balls"]
     pitcher_data_sums["LA"] = pitcher_data_sums["launch_angle_sum"] / pitcher_data_sums["batted_balls"]
-    pitcher_data_sums["Hard%"] = pitcher_data_sums["hard_hit_balls"] / pitcher_data_sums["batted_balls"]
+    pitcher_data_sums["HardHit%"] = pitcher_data_sums["hard_hit_balls"] / pitcher_data_sums["batted_balls"]
+    pitcher_data_sums["Med%"] = pitcher_data_sums["med_hit_balls"] / pitcher_data_sums["batted_balls"]
+    pitcher_data_sums["Soft%"] = pitcher_data_sums["soft_hit_balls"] / pitcher_data_sums["batted_balls"]
     pitcher_data_sums["Barrel%"] = pitcher_data_sums["barrel_balls"] / pitcher_data_sums["batted_balls"]
     
     # --- Batted-ball profile ---
     pitcher_data_sums["GB%"] = pitcher_data_sums["ground_balls"] / pitcher_data_sums["batted_balls"]
     pitcher_data_sums["FB%"] = pitcher_data_sums["fly_balls"] / pitcher_data_sums["batted_balls"]
     pitcher_data_sums["LD%"] = pitcher_data_sums["line_drives"] / pitcher_data_sums["batted_balls"]
+    pitcher_data_sums["IFFB%"] = pitcher_data_sums["popups"] / pitcher_data_sums["fly_balls"]
     pitcher_data_sums["HR/FB"] = pitcher_data_sums["homeRuns"] / pitcher_data_sums["fly_balls"]
+    pitcher_data_sums["GB/FB"] = pitcher_data_sums["ground_balls"] / pitcher_data_sums["fly_balls"]
     
     # --- Plate discipline ---
     pitcher_data_sums["Zone%"] = pitcher_data_sums["pitches_in_zone"] / pitcher_data_sums["pitches"]
@@ -1306,8 +1352,10 @@ def process_starting_pitcher_stats(pitcher_statsapi_df, pitcher_statcast_df):
     pitcher_data_sums["Contact%"] = pitcher_data_sums["contacted_balls"] / pitcher_data_sums["swings"]
     pitcher_data_sums["Z-Contact%"] = pitcher_data_sums["contacted_balls_in_zone"] / pitcher_data_sums["swings_in_zone"]
     pitcher_data_sums["O-Contact%"] = pitcher_data_sums["contacted_balls_out_zone"] / pitcher_data_sums["swings_out_zone"]
-    
+
+    pitcher_data_sums["Swing%"] = pitcher_data_sums["swings"] / pitcher_data_sums["pitches"]
     pitcher_data_sums["SwStr%"] = pitcher_data_sums["whiffs"] / pitcher_data_sums["pitches"]
+    pitcher_data_sums["CStr%"] = pitcher_data_sums["called_strikes"] / pitcher_data_sums["pitches"]
     pitcher_data_sums["C+SwStr%"] = (pitcher_data_sums["called_strikes"] + pitcher_data_sums["whiffs"]) / pitcher_data_sums["pitches"]
     
     pitcher_data_sums["F-Strike%"] = pitcher_data_sums["first_pitch_strikes"] / pitcher_data_sums["first_pitches"]
@@ -1330,17 +1378,17 @@ def process_starting_pitcher_stats(pitcher_statsapi_df, pitcher_statcast_df):
         "gamesStarted", "inningsPitched", "battersFaced", 'IP_per_start', 'BF_per_start',
         
         # Results
-        "ERA", "xERA", "FIP", "AVG", "WHIP", "BABIP", "RS/9", "HR/9", "LOB%",
+        "ERA", "xERA", "FIP", "AVG", "WHIP", "BABIP", "RS/9", "H/9", "HR/9", "LOB%",
         
         # K/BB profile
         "K%", "BB%", "K/BB", "K-BB%", "K/9",
         
         # Contact quality
-        "EV", "LA", "Hard%", "Barrel%", "GB%", "FB%", "LD%", "HR/FB", 'DP%', 'GO/AO',
+        "EV", "LA", "HardHit%", "Med%", "Soft%", "Barrel%", "GB%", "FB%", "LD%", "HR/FB", 'DP%', "IFFB%", 'GO/AO', "GB/FB",
         
         # Plate discipline
         "Zone%", "Z-Swing%", "O-Swing%", "Contact%", "Z-Contact%", "O-Contact%",
-        "SwStr%", "C+SwStr%", "F-Strike%",
+        "SwStr%", "CStr%", "C+SwStr%", "F-Strike%",
         
         # Baserunner control
         "wildPitches", "balks", "pickoffs", "caughtStealing", "stolenBases"
