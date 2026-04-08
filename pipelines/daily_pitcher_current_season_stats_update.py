@@ -14,4 +14,4 @@ def run_daily_pitcher_current_season_stats_update():
     push_pitcher_data_to_sql_upsert(table_name, pitcher_current_year_stats_df)
 
 if __name__ == "__main__":
-    daily_pitcher_current_season_stats_update()
+    run_daily_pitcher_current_season_stats_update()
