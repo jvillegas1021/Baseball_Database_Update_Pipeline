@@ -168,7 +168,7 @@ def process_team_batting_df(game_id: int, game_official_date, team_name: str, te
     
     # Counting stats projected to 162 games (talent-ish, per-game played)
     count_stats = [
-    'strikeOuts', 'hits', 'groundIntoDoublePlay', 'singles', 'doubles', 'triples', 'homeRuns', 'baseOnBalls', 'sacFlies', 'hitByPitch', 'GB', 'FB', 'LD', 'atBats', 'plateAppearances'
+    'singles', 'doubles', 'triples', 'homeRuns', 'baseOnBalls', 'hitByPitch', 'plateAppearances'
     ]
     
     team_counting_stats_results = {}
@@ -189,40 +189,67 @@ def process_team_batting_df(game_id: int, game_official_date, team_name: str, te
         team_counting_stats_results[stat] = stat_162_player.sum()
 
 
-    h     = team_counting_stats_results['hits']
-    ab    = team_counting_stats_results['atBats']
     bb    = team_counting_stats_results['baseOnBalls']
-    sf    = team_counting_stats_results['sacFlies']
     hbp   = team_counting_stats_results['hitByPitch']
-    gb    = team_counting_stats_results['GB']
-    fb    = team_counting_stats_results['FB']
-    ld    = team_counting_stats_results['LD']
     pa    = team_counting_stats_results['plateAppearances']
     one_b = team_counting_stats_results['singles']
     two_b = team_counting_stats_results['doubles']
     three_b = team_counting_stats_results['triples']
     hr    = team_counting_stats_results['homeRuns']
-    so    = team_counting_stats_results['strikeOuts']
-    gdp   = team_counting_stats_results['groundIntoDoublePlay']
+
+    team_strikeouts  = roster_batting_df['strikeOuts'].sum()
+    team_plate_appearances = roster_batting_df['plateAppearances'].sum()
+    team_walks = roster_batting_df['baseOnBalls'].sum()
+    team_ground_balls = roster_batting_df['GB'].sum()
+    team_fly_balls = roster_batting_df['FB'].sum()
+    team_lines_drives = roster_batting_df['LD'].sum()
+    team_gb_fb_ld = team_ground_balls  + team_fly_balls + team_lines_drives
+
+    team_at_bats  =  roster_batting_df['atBats'].sum()
+    team_hits = roster_batting_df['hits'].sum()
+    team_total_bases = roster_batting_df['totalBases'].sum()
+    team_home_runs = roster_batting_df['homeRuns'].sum()
+    team_sac_flies = roster_batting_df['sacFlies'].sum()
+    team_hit_by_pitch = roster_batting_df['hitByPitch'].sum()
+    team_popups = roster_batting_df['PU'].sum()
+
+    #  K /  BB family
+    team_k_perc = safe_div(team_strikeouts, team_plate_appearances)
+    team_bb_perc  = safe_div(team_walks, team_plate_appearances)
+    team_bb_k_perc = safe_div(team_walks, team_strikeouts)
+
+    # GB  / FB / LD
+
+    team_gb_perc = safe_div(team_ground_balls, team_gb_fb_ld)
+    team_fb_perc = safe_div(team_fly_balls, team_gb_fb_ld)
+    team_ld_perc = safe_div(team_lines_drives, team_gb_fb_ld)
+    team_hr_fb_perc = safe_div(team_home_runs, team_fly_balls)
+    team_gb_fb_perc = safe_div(team_ground_balls, team_fly_balls)
+    team_iffb_perc = safe_div(team_popups, team_fly_balls)
 
 
-    k_perc = so / pa if pa > 0 else 0
-    bb_perc = bb / pa if pa > 0 else 0
+    # result stat  family
+    team_avg = safe_div(team_hits, team_at_bats)
+    team_slg = safe_div(team_total_bases, team_at_bats)
+    team_iso = team_slg - team_avg
 
-    gb_fb_ld = gb + fb + ld
-    gb_perc = gb / gb_fb_ld if gb_fb_ld > 0 else 0
-    fb_perc = fb / gb_fb_ld if gb_fb_ld > 0 else 0
-    ld_perc = ld / gb_fb_ld if gb_fb_ld > 0 else 0
 
-    avg = h / ab if ab > 0 else 0
-    tb = (one_b + (2 * two_b) + (3 * three_b) + (4 * hr))
-    slg = tb / ab if ab > 0 else 0
-    iso = slg - avg
-    babip = (h - hr) / (ab - so - hr + sf) if (ab - so - hr + sf) > 0 else 0
-    obp = (h + bb + hbp) / (ab + bb + hbp + sf) if (ab + bb + hbp + sf) > 0 else 0
-    bb_k = bb / so if so > 0 else 0
-    hr_fb = hr / fb if fb > 0 else 0
+    team_babip_num = (team_hits - team_home_runs)
+    team_babip_denom = (team_at_bats - team_strikeouts - team_home_runs + team_sac_flies)
+    team_babip = safe_div(team_babip_num, team_babip_denom)
 
+    team_obp_num = team_hits + team_walks + team_hit_by_pitch
+    team_obp_denom = team_at_bats + team_walks + team_hit_by_pitch + team_sac_flies
+    team_obp = safe_div(team_obp_num, team_obp_denom)
+
+    team_ops = team_obp + team_slg
+
+    # EV  / LA
+
+    team_ev  = roster_batting_df['launch_speed_sum'].sum() / roster_batting_df['batted_balls'].sum()
+    team_la = roster_batting_df['launch_angle_sum'].sum() / roster_batting_df['batted_balls'].sum()
+
+    # contact % family
     team_hard      = safe_div(roster_batting_df["hard_hit_balls"].sum(),
                           roster_batting_df["batted_balls"].sum())
 
@@ -241,6 +268,9 @@ def process_team_batting_df(game_id: int, game_official_date, team_name: str, te
     team_o_swing   = safe_div(roster_batting_df["swings_out_zone"].sum(),
                               roster_batting_df["pitches_out_zone"].sum())
 
+    team_barrel_perc = roster_batting_df["barrel_balls"].sum() / roster_batting_df["batted_balls"].sum()
+
+    team_swing_perc = roster_batting_df["whiffs"].sum() / roster_batting_df["pitches"].sum()
 
     # --- Team wOBA ---
     team_woba_numerator = (
@@ -272,37 +302,31 @@ def process_team_batting_df(game_id: int, game_official_date, team_name: str, te
         'officialDate': [game_official_date],
         'team_name': [team_name],
         'team_id': [team_id],
-        "K%": [k_perc],
-        "GB%": [gb_perc],
-        "FB%": [fb_perc],
-        "LD%": [ld_perc],
-        "BB%": [bb_perc],
-        "ISO": [iso],
-        "BABIP": [babip],
-        "AVG": [avg],
-        "OBP": [obp],
-        "SLG": [slg],
-        "BB/K": [bb_k],
-        "HR/FB": [hr_fb],
-        "Hard%": [team_hard],
+        "K%": [team_k_perc],
+        "GB%": [team_gb_perc],
+        "FB%": [team_fb_perc],
+        "LD%": [team_ld_perc],
+        "BB%": [team_bb_perc],
+        "GB/FB": [team_gb_fb_perc],
+        "ISO": [team_iso],
+        "OPS%": [team_ops],
+        "BABIP": [team_babip],
+        "AVG": [team_avg],
+        "OBP": [team_obp],
+        "SLG": [team_slg],
+        "BB/K": [team_bb_k_perc],
+        "HR/FB": [team_hr_fb_perc],
+        "IFFB%": [team_iffb_perc],
+        "Barrel%": [team_barrel_perc],
+        "HardHit%": [team_hard],
         "O-Swing%": [team_o_swing],
         "Z-Swing%": [team_z_swing],
         "Z-Contact%": [team_z_contact],
         "Contact%": [team_contact],
         "O-Contact%": [team_o_contact],
-        'SO': [team_counting_stats_results['strikeOuts']],
-        'GDP': [team_counting_stats_results['groundIntoDoublePlay']],
-        '1B': [team_counting_stats_results['singles']],
-        '2B': [team_counting_stats_results['doubles']],
-        '3B': [team_counting_stats_results['triples']],
-        'HR': [team_counting_stats_results['homeRuns']],
-        'BB': [team_counting_stats_results['baseOnBalls']],
-        'SF': [team_counting_stats_results['sacFlies']],
-        'HBP': [team_counting_stats_results['hitByPitch']],
-        'H': [team_counting_stats_results['hits']],
-        'GB': [team_counting_stats_results['GB']],
-        'FB': [team_counting_stats_results['FB']],
-        'LD': [team_counting_stats_results['LD']],
+        "SwStr%": [team_swing_perc],
+        "EV": [team_ev],
+        "LA": [team_la],
         "wOBA": [team_woba],
         "wRAA": [team_wraa],
         "wRC": [team_wrc],
