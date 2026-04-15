@@ -4,7 +4,12 @@ import numpy as np
 
 
 def safe_div(n, d):
-    return n / d if d > 0 else 0
+    try:
+        return (n / d).replace([np.inf, -np.inf], np.nan).fillna(0)
+    except AttributeError:
+        # scalar path
+        return 0 if (d == 0 or d is None) else n / d
+
 
 def subtract_minutes_from_times(time_list, minutes=45):
     updated_times = []

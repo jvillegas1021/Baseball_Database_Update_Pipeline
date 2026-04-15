@@ -1302,20 +1302,20 @@ def process_starting_pitcher_stats(pitcher_statsapi_df, pitcher_statcast_df):
     ) * 9
     
     pitcher_data_sums["BABIP"] = safe_div(
-        pitcher_data_sums["hits"] - pitcher_data_sums["homeRuns"]
+        (pitcher_data_sums["hits"] - pitcher_data_sums["homeRuns"]
     ) , (
         pitcher_data_sums["atBats"]
         - pitcher_data_sums["strikeOuts"]
         - pitcher_data_sums["homeRuns"]
         + pitcher_data_sums["sacFlies"]
-    )
+    ))
     
     pitcher_data_sums["LOB%"] = safe_div(
         (pitcher_data_sums["hits"] +
          pitcher_data_sums["baseOnBalls"] +
          pitcher_data_sums["hitByPitch"] -
          pitcher_data_sums["runs"])
-        /
+        ,
         (pitcher_data_sums["hits"] +
          pitcher_data_sums["baseOnBalls"] +
          pitcher_data_sums["hitByPitch"] -
