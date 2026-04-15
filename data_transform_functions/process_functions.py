@@ -84,12 +84,12 @@ def process_team_pitching_df(
         )
 
     
-    team_pitching_lob_perc = (
+    team_pitching_lob_perc = safe_div(
         (team_pitching_sums["hits"] +
          team_pitching_sums["baseOnBalls"] +
          team_pitching_sums["hitByPitch"] -
          team_pitching_sums["runs"])
-        /
+        ,
         (team_pitching_sums["hits"] +
          team_pitching_sums["baseOnBalls"] +
          team_pitching_sums["hitByPitch"] -
@@ -121,8 +121,8 @@ def process_team_pitching_df(
     
     
     
-    team_pitching_gbdp_perc = (
-    team_pitching_sums["groundIntoDoublePlay"] /
+    team_pitching_gbdp_perc = safe_div(
+    team_pitching_sums["groundIntoDoublePlay"] ,
     (team_pitching_sums["battersFaced"]
      - team_pitching_sums["strikeOuts"]
      - team_pitching_sums["baseOnBalls"]
@@ -345,8 +345,8 @@ def process_team_batting_df(game_id: int, game_official_date, team_name: str, te
 
     # EV  / LA
 
-    team_ev  = roster_batting_df['launch_speed_sum'].sum() / roster_batting_df['batted_balls'].sum()
-    team_la = roster_batting_df['launch_angle_sum'].sum() / roster_batting_df['batted_balls'].sum()
+    team_ev  = safe_div(roster_batting_df['launch_speed_sum'].sum() , roster_batting_df['batted_balls'].sum())
+    team_la = safe_div(roster_batting_df['launch_angle_sum'].sum() , roster_batting_df['batted_balls'].sum())
 
     # contact % family
     team_hard      = safe_div(roster_batting_df["hard_hit_balls"].sum(),
@@ -367,9 +367,9 @@ def process_team_batting_df(game_id: int, game_official_date, team_name: str, te
     team_o_swing   = safe_div(roster_batting_df["swings_out_zone"].sum(),
                               roster_batting_df["pitches_out_zone"].sum())
 
-    team_barrel_perc = roster_batting_df["barrel_balls"].sum() / roster_batting_df["batted_balls"].sum()
+    team_barrel_perc = safe_div(roster_batting_df["barrel_balls"].sum() , roster_batting_df["batted_balls"].sum())
 
-    team_swing_perc = roster_batting_df["whiffs"].sum() / roster_batting_df["pitches"].sum()
+    team_swing_perc = safe_div(roster_batting_df["whiffs"].sum() , roster_batting_df["pitches"].sum())
 
     # --- Team wOBA ---
     team_woba_numerator = (
@@ -1093,10 +1093,11 @@ def process_starting_pitcher_current_year_stats(pitcher_statsapi_df, pitcher_sta
     
     current_year_stats_df['inningsPitched'] = convert_ip(current_year_stats_df['inningsPitched'])
     
-    current_year_stats_df["AVG"] = current_year_stats_df["hits"] / current_year_stats_df["atBats"]
-    current_year_stats_df["WHIP"] = (
-        current_year_stats_df["baseOnBalls"] + current_year_stats_df["hits"]
-    ) / current_year_stats_df["inningsPitched"]
+    current_year_stats_df["AVG"] = safe_div(current_year_stats_df["hits"] , current_year_stats_df["atBats"])
+    
+    current_year_stats_df["WHIP"] = safe_div(
+        (current_year_stats_df["baseOnBalls"] + current_year_stats_df["hits"]
+    ) , current_year_stats_df["inningsPitched"])
     
     current_year_stats_df["FIP"] = (
         (13 * current_year_stats_df["homeRuns"]) +
@@ -1105,111 +1106,111 @@ def process_starting_pitcher_current_year_stats(pitcher_statsapi_df, pitcher_sta
     ) / current_year_stats_df["inningsPitched"] + fip_constant
     
     
-    current_year_stats_df["ERA"] = (
-        current_year_stats_df["earnedRuns"] / current_year_stats_df["inningsPitched"]
+    current_year_stats_df["ERA"] = safe_div(
+        current_year_stats_df["earnedRuns"] , current_year_stats_df["inningsPitched"]
     ) * 9
     
-    current_year_stats_df["BABIP"] = (
-        current_year_stats_df["hits"] - current_year_stats_df["homeRuns"]
-    ) / (
+    current_year_stats_df["BABIP"] = safe_div(
+        (current_year_stats_df["hits"] - current_year_stats_df["homeRuns"]
+    ) , (
         current_year_stats_df["atBats"]
         - current_year_stats_df["strikeOuts"]
         - current_year_stats_df["homeRuns"]
         + current_year_stats_df["sacFlies"]
-    )
+    ))
     
-    current_year_stats_df["LOB%"] = (
+    current_year_stats_df["LOB%"] = safe_div(
         (current_year_stats_df["hits"] +
          current_year_stats_df["baseOnBalls"] +
          current_year_stats_df["hitByPitch"] -
          current_year_stats_df["runs"])
-        /
+        ,
         (current_year_stats_df["hits"] +
          current_year_stats_df["baseOnBalls"] +
          current_year_stats_df["hitByPitch"] -
          1.4 * current_year_stats_df["homeRuns"])
     )
 
-    current_year_stats_df["TTO%"] = (current_year_stats_df['homeRuns'] + current_year_stats_df['baseOnBalls'] + current_year_stats_df['strikeOuts']) / current_year_stats_df['atBats']
+    current_year_stats_df["TTO%"] = safe_div((current_year_stats_df['homeRuns'] + current_year_stats_df['baseOnBalls'] + current_year_stats_df['strikeOuts']) , current_year_stats_df['atBats'])
     
-    current_year_stats_df["RS/9"] = (
-        current_year_stats_df["runs"] / current_year_stats_df["inningsPitched"]
+    current_year_stats_df["RS/9"] = safe_div(
+        current_year_stats_df["runs"] , current_year_stats_df["inningsPitched"]
     ) * 9
 
-    current_year_stats_df["H/9"] = (
-    current_year_stats_df["hits"] / current_year_stats_df["inningsPitched"]
+    current_year_stats_df["H/9"] = safe_div(
+    current_year_stats_df["hits"] , current_year_stats_df["inningsPitched"]
     ) * 9
     
-    current_year_stats_df["HR/9"] = (
-        current_year_stats_df["homeRuns"] / current_year_stats_df["inningsPitched"]
+    current_year_stats_df["HR/9"] = safe_div(
+        current_year_stats_df["homeRuns"] , current_year_stats_df["inningsPitched"]
     ) * 9
     
-    current_year_stats_df["K/9"] = (
-    current_year_stats_df["strikeOuts"] / current_year_stats_df["inningsPitched"]
+    current_year_stats_df["K/9"] = safe_div(
+    current_year_stats_df["strikeOuts"] , current_year_stats_df["inningsPitched"]
     ) * 9
 
-    current_year_stats_df["BB/9"] = (
-    current_year_stats_df["baseOnBalls"] / current_year_stats_df["inningsPitched"]
+    current_year_stats_df["BB/9"] = safe_div(
+    current_year_stats_df["baseOnBalls"] , current_year_stats_df["inningsPitched"]
     ) * 9
     
-    current_year_stats_df["BF_per_start"] = (
-    current_year_stats_df["battersFaced"] / current_year_stats_df["gamesStarted"]
+    current_year_stats_df["BF_per_start"] = safe_div(
+    current_year_stats_df["battersFaced"] , current_year_stats_df["gamesStarted"]
     )
 
-    current_year_stats_df["IP_per_start"] = (
-    current_year_stats_df["inningsPitched"] / current_year_stats_df["gamesStarted"]
+    current_year_stats_df["IP_per_start"] = safe_div(
+    current_year_stats_df["inningsPitched"] , current_year_stats_df["gamesStarted"]
     )
 
-    current_year_stats_df["DP%"] = (
-    current_year_stats_df["groundIntoDoublePlay"] /
+    current_year_stats_df["DP%"] = safe_div(
+    current_year_stats_df["groundIntoDoublePlay"] ,
     (current_year_stats_df["battersFaced"]
      - current_year_stats_df["strikeOuts"]
      - current_year_stats_df["baseOnBalls"]
      - current_year_stats_df["hitByPitch"])
     )
 
-    current_year_stats_df["GO/AO"] = (
-    current_year_stats_df["groundOuts"] / current_year_stats_df["airOuts"]
+    current_year_stats_df["GO/AO"] = safe_div(
+    current_year_stats_df["groundOuts"] , current_year_stats_df["airOuts"]
     )
 
-    current_year_stats_df["EV"] = current_year_stats_df["launch_speed_sum"] / current_year_stats_df["batted_balls"]
-    current_year_stats_df["LA"] = current_year_stats_df["launch_angle_sum"] / current_year_stats_df["batted_balls"]
-    current_year_stats_df["HardHit%"] = current_year_stats_df["hard_hit_balls"] / current_year_stats_df["batted_balls"]
-    current_year_stats_df["Med%"] = current_year_stats_df["med_hit_balls"] / current_year_stats_df["batted_balls"]
-    current_year_stats_df["Soft%"] = current_year_stats_df["soft_hit_balls"] / current_year_stats_df["batted_balls"]
-    current_year_stats_df["Barrel%"] = current_year_stats_df["barrel_balls"] / current_year_stats_df["batted_balls"]
+    current_year_stats_df["EV"] = safe_div(current_year_stats_df["launch_speed_sum"] , current_year_stats_df["batted_balls"])
+    current_year_stats_df["LA"] = safe_div(current_year_stats_df["launch_angle_sum"] , current_year_stats_df["batted_balls"])
+    current_year_stats_df["HardHit%"] = safe_div(current_year_stats_df["hard_hit_balls"] , current_year_stats_df["batted_balls"])
+    current_year_stats_df["Med%"] = safe_div(current_year_stats_df["med_hit_balls"] , current_year_stats_df["batted_balls"])
+    current_year_stats_df["Soft%"] = safe_div(current_year_stats_df["soft_hit_balls"] , current_year_stats_df["batted_balls"])
+    current_year_stats_df["Barrel%"] = safe_div(current_year_stats_df["barrel_balls"] , current_year_stats_df["batted_balls"])
     
     # --- Batted-ball profile ---
-    current_year_stats_df["GB%"] = current_year_stats_df["ground_balls"] / current_year_stats_df["batted_balls"]
-    current_year_stats_df["FB%"] = current_year_stats_df["fly_balls"] / current_year_stats_df["batted_balls"]
-    current_year_stats_df["LD%"] = current_year_stats_df["line_drives"] / current_year_stats_df["batted_balls"]
-    current_year_stats_df["GB/FB"] = current_year_stats_df["ground_balls"] / current_year_stats_df["fly_balls"]
-    current_year_stats_df["IFFB%"] = current_year_stats_df["popups"] / current_year_stats_df["fly_balls"]
-    current_year_stats_df["HR/FB"] = current_year_stats_df["homeRuns"] / current_year_stats_df["fly_balls"]
+    current_year_stats_df["GB%"] = safe_div(current_year_stats_df["ground_balls"] , current_year_stats_df["batted_balls"])
+    current_year_stats_df["FB%"] = safe_div(current_year_stats_df["fly_balls"] , current_year_stats_df["batted_balls"])
+    current_year_stats_df["LD%"] = safe_div(current_year_stats_df["line_drives"] , current_year_stats_df["batted_balls"])
+    current_year_stats_df["GB/FB"] = safe_div(current_year_stats_df["ground_balls"] , current_year_stats_df["fly_balls"])
+    current_year_stats_df["IFFB%"] = safe_div(current_year_stats_df["popups"] , current_year_stats_df["fly_balls"])
+    current_year_stats_df["HR/FB"] = safe_div(current_year_stats_df["homeRuns"] , current_year_stats_df["fly_balls"])
     
     # --- Plate discipline ---
-    current_year_stats_df["Zone%"] = current_year_stats_df["pitches_in_zone"] / current_year_stats_df["pitches"]
-    current_year_stats_df["Z-Swing%"] = current_year_stats_df["swings_in_zone"] / current_year_stats_df["pitches_in_zone"]
-    current_year_stats_df["O-Swing%"] = current_year_stats_df["swings_out_zone"] / current_year_stats_df["pitches_out_zone"]
+    current_year_stats_df["Zone%"] = safe_div(current_year_stats_df["pitches_in_zone"] , current_year_stats_df["pitches"])
+    current_year_stats_df["Z-Swing%"] = safe_div(current_year_stats_df["swings_in_zone"] , current_year_stats_df["pitches_in_zone"])
+    current_year_stats_df["O-Swing%"] = safe_div(current_year_stats_df["swings_out_zone"] , current_year_stats_df["pitches_out_zone"])
     
-    current_year_stats_df["Contact%"] = current_year_stats_df["contacted_balls"] / current_year_stats_df["swings"]
-    current_year_stats_df["Z-Contact%"] = current_year_stats_df["contacted_balls_in_zone"] / current_year_stats_df["swings_in_zone"]
-    current_year_stats_df["O-Contact%"] = current_year_stats_df["contacted_balls_out_zone"] / current_year_stats_df["swings_out_zone"]
+    current_year_stats_df["Contact%"] = safe_div(current_year_stats_df["contacted_balls"] , current_year_stats_df["swings"])
+    current_year_stats_df["Z-Contact%"] = safe_div(current_year_stats_df["contacted_balls_in_zone"] , current_year_stats_df["swings_in_zone"])
+    current_year_stats_df["O-Contact%"] = safe_div(current_year_stats_df["contacted_balls_out_zone"] , current_year_stats_df["swings_out_zone"])
 
-    current_year_stats_df["Swing%"] = current_year_stats_df["swings"] / current_year_stats_df["pitches"]
-    current_year_stats_df["SwStr%"] = current_year_stats_df["whiffs"] / current_year_stats_df["pitches"]
-    current_year_stats_df["CStr%"] = current_year_stats_df["called_strikes"] / current_year_stats_df["pitches"]
-    current_year_stats_df["C+SwStr%"] = (current_year_stats_df["called_strikes"] + current_year_stats_df["whiffs"]) / current_year_stats_df["pitches"]
+    current_year_stats_df["Swing%"] = safe_div(current_year_stats_df["swings"] , current_year_stats_df["pitches"])
+    current_year_stats_df["SwStr%"] = safe_div(current_year_stats_df["whiffs"] , current_year_stats_df["pitches"])
+    current_year_stats_df["CStr%"] = safe_div(current_year_stats_df["called_strikes"] , current_year_stats_df["pitches"])
+    current_year_stats_df["C+SwStr%"] = safe_div((current_year_stats_df["called_strikes"] + current_year_stats_df["whiffs"]) , current_year_stats_df["pitches"])
     
-    current_year_stats_df["F-Strike%"] = current_year_stats_df["first_pitch_strikes"] / current_year_stats_df["first_pitches"]
+    current_year_stats_df["F-Strike%"] = safe_div(current_year_stats_df["first_pitch_strikes"] , current_year_stats_df["first_pitches"])
     
     # --- K/BB family ---
-    current_year_stats_df["K%"] = current_year_stats_df["strikeOuts"] / current_year_stats_df["battersFaced"]
-    current_year_stats_df["BB%"] = current_year_stats_df["baseOnBalls"] / current_year_stats_df["battersFaced"]
-    current_year_stats_df["K/BB"] = current_year_stats_df["strikeOuts"] / current_year_stats_df["baseOnBalls"]
+    current_year_stats_df["K%"] = safe_div(current_year_stats_df["strikeOuts"] , current_year_stats_df["battersFaced"])
+    current_year_stats_df["BB%"] = safe_div(current_year_stats_df["baseOnBalls"] , current_year_stats_df["battersFaced"])
+    current_year_stats_df["K/BB"] = safe_div(current_year_stats_df["strikeOuts"] , current_year_stats_df["baseOnBalls"])
     current_year_stats_df["K-BB%"] = current_year_stats_df["K%"] - current_year_stats_df["BB%"]
       
-    current_year_stats_df["xwOBA"] = current_year_stats_df["xWOBA_allowed"] / current_year_stats_df["batted_balls"]
+    current_year_stats_df["xwOBA"] = safe_div(current_year_stats_df["xWOBA_allowed"] , current_year_stats_df["batted_balls"])
     
     # You supply league_xwOBA and league_ERA from your 2025 benchmark
     current_year_stats_df["xERA"] = league_era + (current_year_stats_df["xwOBA"] - league_xwoba) * 1.15 * 9
@@ -1283,10 +1284,11 @@ def process_starting_pitcher_stats(pitcher_statsapi_df, pitcher_statcast_df):
     fip_constant = 3.1495185210234546
     
     
-    pitcher_data_sums["AVG"] = pitcher_data_sums["hits"] / pitcher_data_sums["atBats"]
-    pitcher_data_sums["WHIP"] = (
+    pitcher_data_sums["AVG"] = safe_div(pitcher_data_sums["hits"] , pitcher_data_sums["atBats"])
+    
+    pitcher_data_sums["WHIP"] = safe_div((
         pitcher_data_sums["baseOnBalls"] + pitcher_data_sums["hits"]
-    ) / pitcher_data_sums["inningsPitched"]
+    ) , pitcher_data_sums["inningsPitched"])
     
     pitcher_data_sums["FIP"] = (
         (13 * pitcher_data_sums["homeRuns"]) +
@@ -1295,20 +1297,20 @@ def process_starting_pitcher_stats(pitcher_statsapi_df, pitcher_statcast_df):
     ) / pitcher_data_sums["inningsPitched"] + fip_constant
     
     
-    pitcher_data_sums["ERA"] = (
-        pitcher_data_sums["earnedRuns"] / pitcher_data_sums["inningsPitched"]
+    pitcher_data_sums["ERA"] = safe_div(
+        pitcher_data_sums["earnedRuns"] , pitcher_data_sums["inningsPitched"]
     ) * 9
     
-    pitcher_data_sums["BABIP"] = (
+    pitcher_data_sums["BABIP"] = safe_div(
         pitcher_data_sums["hits"] - pitcher_data_sums["homeRuns"]
-    ) / (
+    ) , (
         pitcher_data_sums["atBats"]
         - pitcher_data_sums["strikeOuts"]
         - pitcher_data_sums["homeRuns"]
         + pitcher_data_sums["sacFlies"]
     )
     
-    pitcher_data_sums["LOB%"] = (
+    pitcher_data_sums["LOB%"] = safe_div(
         (pitcher_data_sums["hits"] +
          pitcher_data_sums["baseOnBalls"] +
          pitcher_data_sums["hitByPitch"] -
@@ -1320,26 +1322,26 @@ def process_starting_pitcher_stats(pitcher_statsapi_df, pitcher_statcast_df):
          1.4 * pitcher_data_sums["homeRuns"])
     )
 
-    pitcher_data_sums["TTO%"] = (pitcher_data_sums['homeRuns'] + pitcher_data_sums['baseOnBalls'] + pitcher_data_sums['strikeOuts']) / pitcher_data_sums['atBats']
+    pitcher_data_sums["TTO%"] = safe_div((pitcher_data_sums['homeRuns'] + pitcher_data_sums['baseOnBalls'] + pitcher_data_sums['strikeOuts']) , pitcher_data_sums['atBats'])
     
-    pitcher_data_sums["H/9"] = (
-        pitcher_data_sums["hits"] / pitcher_data_sums["inningsPitched"]
+    pitcher_data_sums["H/9"] = safe_div(
+        pitcher_data_sums["hits"] , pitcher_data_sums["inningsPitched"]
     ) * 9
 
-    pitcher_data_sums["BB/9"] = (
-        pitcher_data_sums["baseOnBalls"] / pitcher_data_sums["inningsPitched"]
+    pitcher_data_sums["BB/9"] = safe_div(
+        pitcher_data_sums["baseOnBalls"] , pitcher_data_sums["inningsPitched"]
     ) * 9
     
-    pitcher_data_sums["RS/9"] = (
-        pitcher_data_sums["runs"] / pitcher_data_sums["inningsPitched"]
+    pitcher_data_sums["RS/9"] = safe_div(
+        pitcher_data_sums["runs"] , pitcher_data_sums["inningsPitched"]
     ) * 9
     
-    pitcher_data_sums["HR/9"] = (
-        pitcher_data_sums["homeRuns"] / pitcher_data_sums["inningsPitched"]
+    pitcher_data_sums["HR/9"] = safe_div(
+        pitcher_data_sums["homeRuns"] , pitcher_data_sums["inningsPitched"]
     ) * 9
     
-    pitcher_data_sums["K/9"] = (
-    pitcher_data_sums["strikeOuts"] / pitcher_data_sums["inningsPitched"]
+    pitcher_data_sums["K/9"] = safe_div(
+    pitcher_data_sums["strikeOuts"] , pitcher_data_sums["inningsPitched"]
     ) * 9
     
     
@@ -1356,56 +1358,56 @@ def process_starting_pitcher_stats(pitcher_statsapi_df, pitcher_statcast_df):
     )
     
     
-    pitcher_data_sums["DP%"] = (
-    pitcher_data_sums["groundIntoDoublePlay"] /
+    pitcher_data_sums["DP%"] = safe_div(
+    pitcher_data_sums["groundIntoDoublePlay"] ,
     (pitcher_data_sums["battersFaced"]
      - pitcher_data_sums["strikeOuts"]
      - pitcher_data_sums["baseOnBalls"]
      - pitcher_data_sums["hitByPitch"])
     )
     
-    pitcher_data_sums["GO/AO"] = (
-    pitcher_data_sums["groundOuts"] / pitcher_data_sums["airOuts"]
+    pitcher_data_sums["GO/AO"] = safe_div(
+    pitcher_data_sums["groundOuts"] , pitcher_data_sums["airOuts"]
     )
     
-    pitcher_data_sums["EV"] = pitcher_data_sums["launch_speed_sum"] / pitcher_data_sums["batted_balls"]
-    pitcher_data_sums["LA"] = pitcher_data_sums["launch_angle_sum"] / pitcher_data_sums["batted_balls"]
-    pitcher_data_sums["HardHit%"] = pitcher_data_sums["hard_hit_balls"] / pitcher_data_sums["batted_balls"]
-    pitcher_data_sums["Med%"] = pitcher_data_sums["med_hit_balls"] / pitcher_data_sums["batted_balls"]
-    pitcher_data_sums["Soft%"] = pitcher_data_sums["soft_hit_balls"] / pitcher_data_sums["batted_balls"]
-    pitcher_data_sums["Barrel%"] = pitcher_data_sums["barrel_balls"] / pitcher_data_sums["batted_balls"]
+    pitcher_data_sums["EV"] = safe_div(pitcher_data_sums["launch_speed_sum"] , pitcher_data_sums["batted_balls"])
+    pitcher_data_sums["LA"] = safe_div(pitcher_data_sums["launch_angle_sum"] , pitcher_data_sums["batted_balls"])
+    pitcher_data_sums["HardHit%"] = safe_div(pitcher_data_sums["hard_hit_balls"] , pitcher_data_sums["batted_balls"])
+    pitcher_data_sums["Med%"] = safe_div(pitcher_data_sums["med_hit_balls"] , pitcher_data_sums["batted_balls"])
+    pitcher_data_sums["Soft%"] = safe_div(pitcher_data_sums["soft_hit_balls"] , pitcher_data_sums["batted_balls"])
+    pitcher_data_sums["Barrel%"] = safe_div(pitcher_data_sums["barrel_balls"] , pitcher_data_sums["batted_balls"])
     
     # --- Batted-ball profile ---
-    pitcher_data_sums["GB%"] = pitcher_data_sums["ground_balls"] / pitcher_data_sums["batted_balls"]
-    pitcher_data_sums["FB%"] = pitcher_data_sums["fly_balls"] / pitcher_data_sums["batted_balls"]
-    pitcher_data_sums["LD%"] = pitcher_data_sums["line_drives"] / pitcher_data_sums["batted_balls"]
-    pitcher_data_sums["IFFB%"] = pitcher_data_sums["popups"] / pitcher_data_sums["fly_balls"]
-    pitcher_data_sums["HR/FB"] = pitcher_data_sums["homeRuns"] / pitcher_data_sums["fly_balls"]
-    pitcher_data_sums["GB/FB"] = pitcher_data_sums["ground_balls"] / pitcher_data_sums["fly_balls"]
+    pitcher_data_sums["GB%"] = safe_div(pitcher_data_sums["ground_balls"] , pitcher_data_sums["batted_balls"])
+    pitcher_data_sums["FB%"] = safe_div(pitcher_data_sums["fly_balls"] , pitcher_data_sums["batted_balls"])
+    pitcher_data_sums["LD%"] = safe_div(pitcher_data_sums["line_drives"] , pitcher_data_sums["batted_balls"])
+    pitcher_data_sums["IFFB%"] = safe_div(pitcher_data_sums["popups"] , pitcher_data_sums["fly_balls"])
+    pitcher_data_sums["HR/FB"] = safe_div(pitcher_data_sums["homeRuns"] , pitcher_data_sums["fly_balls"])
+    pitcher_data_sums["GB/FB"] = safe_div(pitcher_data_sums["ground_balls"] , pitcher_data_sums["fly_balls"])
     
     # --- Plate discipline ---
-    pitcher_data_sums["Zone%"] = pitcher_data_sums["pitches_in_zone"] / pitcher_data_sums["pitches"]
-    pitcher_data_sums["Z-Swing%"] = pitcher_data_sums["swings_in_zone"] / pitcher_data_sums["pitches_in_zone"]
-    pitcher_data_sums["O-Swing%"] = pitcher_data_sums["swings_out_zone"] / pitcher_data_sums["pitches_out_zone"]
+    pitcher_data_sums["Zone%"] = safe_div(pitcher_data_sums["pitches_in_zone"] , pitcher_data_sums["pitches"])
+    pitcher_data_sums["Z-Swing%"] = safe_div(pitcher_data_sums["swings_in_zone"] , pitcher_data_sums["pitches_in_zone"])
+    pitcher_data_sums["O-Swing%"] = safe_div(pitcher_data_sums["swings_out_zone"] , pitcher_data_sums["pitches_out_zone"])
     
-    pitcher_data_sums["Contact%"] = pitcher_data_sums["contacted_balls"] / pitcher_data_sums["swings"]
-    pitcher_data_sums["Z-Contact%"] = pitcher_data_sums["contacted_balls_in_zone"] / pitcher_data_sums["swings_in_zone"]
-    pitcher_data_sums["O-Contact%"] = pitcher_data_sums["contacted_balls_out_zone"] / pitcher_data_sums["swings_out_zone"]
+    pitcher_data_sums["Contact%"] = safe_div(pitcher_data_sums["contacted_balls"] , pitcher_data_sums["swings"])
+    pitcher_data_sums["Z-Contact%"] = safe_div(pitcher_data_sums["contacted_balls_in_zone"] , pitcher_data_sums["swings_in_zone"])
+    pitcher_data_sums["O-Contact%"] = safe_div(pitcher_data_sums["contacted_balls_out_zone"] , pitcher_data_sums["swings_out_zone"])
 
-    pitcher_data_sums["Swing%"] = pitcher_data_sums["swings"] / pitcher_data_sums["pitches"]
-    pitcher_data_sums["SwStr%"] = pitcher_data_sums["whiffs"] / pitcher_data_sums["pitches"]
-    pitcher_data_sums["CStr%"] = pitcher_data_sums["called_strikes"] / pitcher_data_sums["pitches"]
-    pitcher_data_sums["C+SwStr%"] = (pitcher_data_sums["called_strikes"] + pitcher_data_sums["whiffs"]) / pitcher_data_sums["pitches"]
+    pitcher_data_sums["Swing%"] = safe_div(pitcher_data_sums["swings"] , pitcher_data_sums["pitches"])
+    pitcher_data_sums["SwStr%"] = safe_div(pitcher_data_sums["whiffs"] , pitcher_data_sums["pitches"])
+    pitcher_data_sums["CStr%"] = safe_div(pitcher_data_sums["called_strikes"] , pitcher_data_sums["pitches"])
+    pitcher_data_sums["C+SwStr%"] = safe_div((pitcher_data_sums["called_strikes"] + pitcher_data_sums["whiffs"]) , pitcher_data_sums["pitches"])
     
-    pitcher_data_sums["F-Strike%"] = pitcher_data_sums["first_pitch_strikes"] / pitcher_data_sums["first_pitches"]
+    pitcher_data_sums["F-Strike%"] = safe_div(pitcher_data_sums["first_pitch_strikes"] , pitcher_data_sums["first_pitches"])
     
-    # --- K/BB family ---
-    pitcher_data_sums["K%"] = pitcher_data_sums["strikeOuts"] / pitcher_data_sums["battersFaced"]
-    pitcher_data_sums["BB%"] = pitcher_data_sums["baseOnBalls"] / pitcher_data_sums["battersFaced"]
-    pitcher_data_sums["K/BB"] = pitcher_data_sums["strikeOuts"] / pitcher_data_sums["baseOnBalls"]
+    # --- K,BB family ---
+    pitcher_data_sums["K%"] = safe_div(pitcher_data_sums["strikeOuts"] , pitcher_data_sums["battersFaced"])
+    pitcher_data_sums["BB%"] = safe_div(pitcher_data_sums["baseOnBalls"] , pitcher_data_sums["battersFaced"])
+    pitcher_data_sums["K/BB"] = safe_div(pitcher_data_sums["strikeOuts"] , pitcher_data_sums["baseOnBalls"])
     pitcher_data_sums["K-BB%"] = pitcher_data_sums["K%"] - pitcher_data_sums["BB%"]
     
-    pitcher_data_sums["xwOBA"] = pitcher_data_sums["xWOBA_allowed"] / pitcher_data_sums["batted_balls"]
+    pitcher_data_sums["xwOBA"] = safe_div(pitcher_data_sums["xWOBA_allowed"] , pitcher_data_sums["batted_balls"])
     
     # You supply league_xwOBA and league_ERA from your 2025 benchmark
     pitcher_data_sums["xERA"] = league_era + (pitcher_data_sums["xwOBA"] - league_xwoba) * 1.15 * 9
