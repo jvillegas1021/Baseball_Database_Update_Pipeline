@@ -1,0 +1,34 @@
+name: Run Daily Morning Update Scheduler
+
+on:
+  schedule:
+    - cron: "50 14 * * *"   # 10:50 AM ET (1 hour before 11:50)
+  workflow_dispatch:
+
+jobs:
+  run-pre-scheduler:
+    runs-on: ubuntu-latest
+
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Add repo root to PYTHONPATH
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
+
+      - name: Run Pre-Update Script
+        run: python data_scheduler/run_daily_morning_update.py
