@@ -1,5 +1,5 @@
 
-name: Run Roster Stats Update Scheduler
+name: Run Late Games Roster Stats Update Scheduler
 
 on:
   schedule:
