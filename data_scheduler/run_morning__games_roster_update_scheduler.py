@@ -24,13 +24,23 @@ def roster_stats_update():
         print("No MLB games today. Scheduler exiting.")
         return
 
+    eastern = ZoneInfo("America/New_York")
+
+    morning_games_cutoff_time = datetime.now(eastern).replace(
+        hour=16, minute=30, second=0, microsecond=0
+    )
+    
     # 3. Convert to datetime, subtract 45 min, convert to Eastern
     games['gameDate'] = pd.to_datetime(games['gameDate'])
     games['gameDate'] = games['gameDate'] - pd.Timedelta(minutes=45)
     games['gameDate'] = games['gameDate'].dt.tz_convert('US/Eastern')
 
+    games_after_cutoff = games['gameDate'] < morning_games_cutoff_time
+
+    final_game_times = games[games_after_cutoff]
+
     # 4. Convert to Python datetime objects
-    run_times = sorted({pd.Timestamp(t).to_pydatetime() for t in games['gameDate']})
+    run_times = sorted({pd.Timestamp(t).to_pydatetime() for t in final_game_times['gameDate']})
 
     # 5. Loop through run times
     for rt in run_times:
