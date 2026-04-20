@@ -34,7 +34,7 @@ def roster_stats_update():
     games['gameDate'] = pd.to_datetime(games['gameDate'])
     games['gameDate'] = games['gameDate'].dt.tz_convert('US/Eastern')
 
-    games_before_cutoff = games['gameDate'] < morning_games_cutoff_time
+    games_before_cutoff = games['gameDate'] > morning_games_cutoff_time
 
     filtered_game_times = games[games_before_cutoff]
 
