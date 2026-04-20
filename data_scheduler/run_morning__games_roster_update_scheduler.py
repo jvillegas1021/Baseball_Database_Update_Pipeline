@@ -30,15 +30,15 @@ def roster_stats_update():
         hour=16, minute=30, second=0, microsecond=0
     )
 
+    # 3. Convert to datetime, subtract 45 min, convert to Eastern
+    games['gameDate'] = pd.to_datetime(games['gameDate'])
+    games['gameDate'] = games['gameDate'].dt.tz_convert('US/Eastern')
+
     games_before_cutoff = games['gameDate'] < morning_games_cutoff_time
 
     filtered_game_times = games[games_before_cutoff]
-    
-    # 3. Convert to datetime, subtract 45 min, convert to Eastern
-    filtered_game_times['gameDate'] = pd.to_datetime(filtered_game_times['gameDate'])
-    filtered_game_times['gameDate'] = filtered_game_times['gameDate'] - pd.Timedelta(minutes=45)
-    filtered_game_times['gameDate'] = filtered_game_times['gameDate'].dt.tz_convert('US/Eastern')
 
+    filtered_game_times['gameDate'] = filtered_game_times['gameDate'] - pd.Timedelta(minutes=45)
 
     # 4. Convert to Python datetime objects
     run_times = sorted({pd.Timestamp(t).to_pydatetime() for t in filtered_game_times['gameDate']})
