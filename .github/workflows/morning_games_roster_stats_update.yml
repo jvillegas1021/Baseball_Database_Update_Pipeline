@@ -3,7 +3,7 @@ name: Run Roster Stats Update Scheduler
 
 on:
   schedule:
-    - cron: "50 15 * * *"   # Runs at 11:50 AM ET every day
+    - cron: "30 14 * * *"   # Runs at 10:30 AM ET every day
   workflow_dispatch:        # Allows manual runs from the Actions tab
 
 jobs:
