@@ -27,7 +27,7 @@ def roster_stats_update():
     eastern = ZoneInfo("America/New_York")
 
     morning_games_cutoff_time = datetime.now(eastern).replace(
-        hour=16, minute=30, second=0, microsecond=0
+        hour=16, minute=00, second=0, microsecond=0
     )
 
     # 3. Convert to datetime, subtract 45 min, convert to Eastern
