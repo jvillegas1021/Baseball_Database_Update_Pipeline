@@ -67,6 +67,37 @@ def run_daily_roster_update(game_date=None):
                 'active_team_batting_stats',
                 active_team_batting_df
             )
+
+            try:
+                historical_team_batting_df = pull_data_from_neon_sql_database(
+                    """SELECT "gamePk", "team_id" FROM historical_team_batting_stats"""
+                )
+            except Exception:
+                # Table does not exist yet → create empty DataFrame
+                historical_team_batting_df = pd.DataFrame(columns=["gamePk", "team_id"])
+
+    
+            # Build indexes
+            active_idx = active_team_batting_df.set_index(['gamePk', 'team_id']).index
+            historical_idx = historical_team_batting_df.set_index(['gamePk', 'team_id']).index
+    
+            # Find new rows
+            new_idx = active_idx.difference(historical_idx)
+    
+            # Extract only new rows
+            complete_historical_batting_df = (
+                active_team_batting_df
+                .set_index(['gamePk', 'team_id'])
+                .loc[new_idx]
+                .reset_index()
+            )
+    
+            # Push only if non-empty
+            if not complete_historical_batting_df.empty:
+                push_historical_team_data_to_sql(
+                    'historical_team_batting_stats',
+                    complete_historical_batting_df
+                )
     
 
     if all_team_pitching_df_list:
@@ -78,6 +109,33 @@ def run_daily_roster_update(game_date=None):
                 'active_team_pitching_stats',
                 active_team_pitching_df
             )
+
+            try:
+                historical_team_pitching_df = pull_data_from_neon_sql_database(
+                    """SELECT "gamePk", "team_id" FROM historical_team_pitching_stats"""
+                )
+            except Exception:
+                # Table does not exist yet → create empty DataFrame
+                historical_team_pitching_df = pd.DataFrame(columns=["gamePk", "team_id"])
+
+    
+            active_idx = active_team_pitching_df.set_index(['gamePk', 'team_id']).index
+            historical_idx = historical_team_pitching_df.set_index(['gamePk', 'team_id']).index
+    
+            new_idx = active_idx.difference(historical_idx)
+    
+            complete_historical_pitching_df = (
+                active_team_pitching_df
+                .set_index(['gamePk', 'team_id'])
+                .loc[new_idx]
+                .reset_index()
+            )
+    
+            if not complete_historical_pitching_df.empty:
+                push_historical_team_data_to_sql(
+                    'historical_team_pitching_stats',
+                    complete_historical_pitching_df
+                )
     
 
 if __name__ == "__main__":
