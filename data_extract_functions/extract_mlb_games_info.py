@@ -182,7 +182,7 @@ def get_current_pitcher_ids():
 
         # 3. Filter pitchers
         for player in roster:
-            if player["position"]["type"] == "Pitcher":
+            if player["position"]["type"] == "Pitcher" or player["position"]["type"] == "Two-Way Player":
                 pitcher_ids.add(player["person"]["id"])
 
 
