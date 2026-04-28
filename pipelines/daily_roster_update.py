@@ -29,9 +29,9 @@ def run_daily_roster_update(game_date=None):
     pitching_df_statcast = pitcher_seasonal_data_statcast() 
 
     try:
-    historical_team_batting_df = pull_data_from_neon_sql_database(
-        """SELECT "gamePk", "team_id" FROM historical_team_batting_stats"""
-        )
+        historical_team_batting_df = pull_data_from_neon_sql_database(
+            """SELECT "gamePk", "team_id" FROM historical_team_batting_stats"""
+            )
     except Exception:
         historical_team_batting_df = pd.DataFrame(columns=["gamePk", "team_id"])
     
@@ -40,9 +40,9 @@ def run_daily_roster_update(game_date=None):
     )
 
     try:
-    historical_team_pitching_df = pull_data_from_neon_sql_database(
-        """SELECT "gamePk", "team_id" FROM historical_team_pitching_stats"""
-    )
+        historical_team_pitching_df = pull_data_from_neon_sql_database(
+            """SELECT "gamePk", "team_id" FROM historical_team_pitching_stats"""
+        )
     except Exception:
         historical_team_pitching_df = pd.DataFrame(columns=["gamePk", "team_id"])
     
@@ -118,7 +118,7 @@ def run_daily_roster_update(game_date=None):
 
             push_historical_team_data_to_sql(
                 'historical_team_pitching_stats',
-                complete_historical_pitching_df
+                active_team_pitching_df
             )
     
 
