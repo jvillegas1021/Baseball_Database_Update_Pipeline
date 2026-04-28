@@ -32,4 +32,4 @@ jobs:
         run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
 
       - name: Run MLB Team Roster Update
-        run: python data_scheduler/roster_update.py
+        run: python data_scheduler/run_roster_update.py
