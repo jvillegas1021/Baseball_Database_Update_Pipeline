@@ -1,5 +1,5 @@
 
-name: Run Morning Games Roster Stats Update Scheduler
+name: Run MLB Team Roster Update 11:05 AM
 
 on:
   schedule:
@@ -31,5 +31,5 @@ jobs:
       - name: Add repo root to PYTHONPATH
         run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
 
-      - name: Run MLB scheduler
+      - name: Run MLB Team Roster Update
         run: python data_scheduler/roster_update.py
