@@ -3,7 +3,7 @@ name: Run MLB Team Roster Update 10:05 AM
 
 on:
   schedule:
-    - cron: "05 02 * * *"
+    - cron: "05 14 * * *"
   workflow_dispatch:        # Allows manual runs from the Actions tab
 
 jobs:
